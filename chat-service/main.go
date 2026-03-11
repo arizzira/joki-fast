@@ -25,12 +25,11 @@ type ChatMessage struct {
 }
 
 // Database sementara di memori buat nyimpen siapa aja yang ada di dalem Room
-// Format: rooms["ID_ORDER"] = { koneksi1: true, koneksi2: true }
 var rooms = make(map[string]map[*websocket.Conn]bool)
-var mutex = sync.Mutex{} // Satpam biar datanya nggak tabrakan kalau banyak yang chat
+var mutex = sync.Mutex{} // Satpam utama
 
 func handleChat(w http.ResponseWriter, r *http.Request) {
-	// 1. Tangkap ID Order dari URL (Misal: ws://localhost:8080/chat?order_id=ORD-123)
+	// 1. Tangkap ID Order dari URL
 	orderID := r.URL.Query().Get("order_id")
 	if orderID == "" {
 		http.Error(w, "Order ID wajib ada!", http.StatusBadRequest)
@@ -44,7 +43,7 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	// 2. Masukin User/Worker ke dalam Kamar (Room) yang sesuai ID Order
+	// 2. Masukin User/Worker ke dalam Kamar (Room)
 	mutex.Lock()
 	if rooms[orderID] == nil {
 		rooms[orderID] = make(map[*websocket.Conn]bool)
@@ -76,17 +75,26 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("📩 Room [%s] %s: %s\n", orderID, chatMsg.Role, chatMsg.Text)
 
-		// 4. BROADCAST: Kirim pesan ini ke SEMUA orang yang ada di kamar yang sama
+		// 4. BROADCAST: (VERSI ANTI NGE-HANG)
+		// Kunci sebentar cuma buat nyatet siapa aja yang ada di kamar
 		mutex.Lock()
+		var clientsToMessage []*websocket.Conn
 		for client := range rooms[orderID] {
-			// Kirim balik dalam bentuk JSON
+			clientsToMessage = append(clientsToMessage, client)
+		}
+		mutex.Unlock() // Buka kunci secepatnya biar server nggak macet!
+
+		// Kirim pesan satu-satu tanpa nahan pintu gerbang utama
+		for _, client := range clientsToMessage {
 			err := client.WriteJSON(chatMsg)
 			if err != nil {
 				client.Close()
+				// Hapus client error/putus dari map dengan aman
+				mutex.Lock()
 				delete(rooms[orderID], client)
+				mutex.Unlock()
 			}
 		}
-		mutex.Unlock()
 	}
 }
 
