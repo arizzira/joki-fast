@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@theme inline {
+    /* === Primary Brand === */
+    --color-primary: #fb5d36;
+    --color-primary-light: #ff7e5f;
+    --color-primary-dark: #e04a26;
+
+    /* === Surface / Background (White Theme) === */
+    --color-surface: #ffffff;
+    --color-surface-secondary: #f8fafc;
+    --color-surface-card: #ffffff;
+    --color-surface-muted: #f1f5f9;
+
+    /* === Text Colors === */
+    --color-text-heading: #0f172a;
+    --color-text-body: #334155;
+    --color-text-muted: #94a3b8;
+
+    /* === Accent Colors === */
+    --color-neon-pink: #ec4899;
+    --color-deep-cyan: #06b6d4;
+    --color-accent-green: #22c55e;
+    --color-accent-blue: #3b82f6;
+    --color-accent-yellow: #eab308;
+    --color-accent-purple: #8b5cf6;
+
+    /* === Border === */
+    --color-border: #e2e8f0;
+    --color-border-dark: #cbd5e1;
+
+    /* === Font === (YANG BAWAH UDAH DIHAPUS, SISAIN INI AJA) */
+    --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+}
+
+/* === Global Base === */
+/* ... SISA KODE LU KE BAWAH TETEP SAMA ... */
+/* === Global Base === */
+/* html { scroll-behavior: smooth; } -> UDAH DIMUSNAHKAN! 💥 */
+
+body {
+    background-color: var(--color-surface);
+    color: var(--color-text-body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   WAJIB BUAT LENIS (JANGAN DIHAPUS) - Mencegah Macet!
+============================================================ */
+html.lenis,
+html.lenis body {
+    height: auto;
+}
+
+.lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+    /* Kunci biar nggak nyangkut/berat */
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+    overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+    pointer-events: none;
+}
+
+/* === Scrollbar Styling === */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-surface-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border-dark);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+}
+
+/* === Selection === */
+::selection {
+    background-color: var(--color-primary);
+    color: white;
+}
