@@ -1,0 +1,186 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  WORKER
+  USER
+}
+
+enum PaymentStatus {
+  BELUM_DP
+  DP_DIBAYAR
+  LUNAS
+}
+
+enum OrderStatus {
+  WAITING_WORKER
+  NEGOTIATION
+  ON_PROGRESS
+  REVIEW
+  DONE
+  CANCELLED
+}
+
+// Enum Baru buat Status Penarikan Dana
+enum WithdrawStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+// Enum Baru buat Status Vetting Worker (Opsional, tapi bagus buat validasi)
+enum WorkerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id               String    @id @default(uuid())
+  nama             String
+  email            String    @unique
+  password         String?   // Bisa null kalau pake Google Login
+  whatsappNumber   String?   @unique
+  role             Role      @default(USER)
+
+  univ             String?
+  jurusan          String?
+  semester         String?
+  
+  // Data Profil & Bank Pekerja/Carrier
+  no_rekening      String?
+  bank             String?
+  
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  
+  // TAMBAHAN BARU: Saldo & Relasi Withdraw
+  saldo            Int       @default(0) // Saldo dalam Rupiah
+  withdrawals      Withdrawal[]
+
+  // ==========================================
+  // TAMBAHAN BARU: Vetting Worker
+  // ==========================================
+  keahlian         String?   // Contoh: "Web Development", "UI/UX"
+  portfolio_link   String?   // Link GDrive, LinkedIn, dll.
+  status_worker    WorkerStatus @default(APPROVED) // Nanti lu ubah PENDING kalau sistem review admin udah siap
+  
+  // Relasi: 1 User bisa jadi Klien (bikin banyak order) atau Worker (ngerjain banyak order)
+  ordersAsClient   Order[]   @relation("ClientOrders")
+  ordersAsWorker   Order[]   @relation("WorkerOrders")
+  notifications    Notification[]
+  
+  createdAt        DateTime  @default(now())
+}
+
+model Order {
+  id                String        @id @default(uuid())
+  order_id_custom   String        @unique
+  
+  // Relasi ke User (Klien yang pesan)
+  client_id         String        
+  client            User          @relation("ClientOrders", fields: [client_id], references: [id])
+  
+  nama_klien        String
+  wa_klien          String
+  judul_tugas       String
+  deskripsi         String?
+  file_tugas        String?
+  harga_total       Int
+  status_pembayaran PaymentStatus @default(BELUM_DP)
+  status_pengerjaan OrderStatus   @default(WAITING_WORKER)
+  
+  rating             Int?
+  ulasan             String?  @db.Text
+
+  // Deal Negosiasi
+  harga_deal        Int?
+  dp_amount         Int?
+  deal_submitted    Boolean       @default(false)
+  deal_validated    Boolean       @default(false)
+  
+  // Tracking
+  revision_count    Int           @default(0)
+  file_hasil        String?           // Legacy, kept for backwards compat
+  progress_note     String?           // Worker update progress
+  catatan_revisi    String?           // Last revision note from user
+  
+  // Relasi ke User (Worker yang ngerjain)
+  worker_id         String?
+  worker            User?         @relation("WorkerOrders", fields: [worker_id], references: [id])
+  
+  invoices          Invoice[]
+  results           OrderResult[]
+  createdAt         DateTime      @default(now())
+}
+
+model OrderResult {
+  id          String   @id @default(uuid())
+  order_id    String
+  order       Order    @relation(fields: [order_id], references: [id])
+  tipe        String   // "FILE", "LINK", "PHOTO"
+  url         String   // Cloudinary URL or external link
+  caption     String?  // Deskripsi file/link
+  nama_file   String?  // Nama asli (for files)
+  createdAt   DateTime @default(now())
+}
+
+model Invoice {
+  id                String   @id @default(uuid())
+  order_id          String
+  order             Order    @relation(fields: [order_id], references: [id])
+  jumlah            Int
+  tipe              String   // Isinya: "DP" atau "PELUNASAN"
+  status            String   @default("PENDING") // PENDING, VERIFIED
+  link_bukti_bayar  String?
+  createdAt         DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  is_read   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  orderId   String
+  senderId  String
+  role      String
+  text      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// BIKIN MODEL BARU KHUSUS WITHDRAWAL (PENARIKAN DANA)
+model Withdrawal {
+  id              String         @id @default(uuid())
+  
+  workerId        String
+  worker          User           @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  
+  amount          Int            // Jumlah uang yang ditarik
+  whatsapp        String?        // Nomor WhatsApp
+
+  bank            String         
+  no_rekening     String         
+  
+  status          WithdrawStatus @default(PENDING)
+  catatan_admin   String?        // Alasan kalau admin nolak penarikan
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
