@@ -3,13 +3,8 @@ import { useState, useEffect } from 'react';
 import { LayoutDashboard, FileText, PlusCircle, Settings, HelpCircle, LogOut, X, ChevronsLeft, ChevronsRight, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
-import axios from 'axios'; // Pastikan axios terimport buat tembak API logout
-import { createClient } from '@supabase/supabase-js'; // Import Supabase
-
-// Setup Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import axiosInstance from '../../api/axiosInstance'; // Pastikan axios terimport buat tembak API logout
+import { supabase } from '../../supabaseClient';
 
 const generalMenu = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -36,13 +31,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
 
         const fetchUnread = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                if (!token) return;
-                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/chat/unread-count`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await res.json();
-                if (result.success) setChatUnreadCount(result.count);
+                const res = await axiosInstance.get('/chat/unread-count');
+                if (res.data.success) setChatUnreadCount(res.data.count);
             } catch (err) { console.error(err); }
         };
         fetchUnread();
@@ -55,10 +45,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
     // ==========================================
     const handleLogout = async () => {
         try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
             // 1. Tembak backend buat formalitas (opsional karena JWT, tapi good practice)
-            await axios.post(`${API_URL}/api/auth/logout`).catch(() => { });
+            await axiosInstance.post('/auth/logout').catch(() => { });
 
             // 2. Bunuh sesi Google di Supabase biar ga looping login
             await supabase.auth.signOut();

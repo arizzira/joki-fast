@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { Link } from 'react-router-dom';
 import { MessageSquare, User, ArrowRight, Loader2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function ChatGlobalWorker() {
     const { isDark } = useTheme();
@@ -14,15 +14,9 @@ export default function ChatGlobalWorker() {
     useEffect(() => {
         const fetchRooms = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                if (!token) return;
-
-                const res = await fetch(`${API_URL}/api/chat/rooms`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await res.json();
-                if (result.success) {
-                    setRooms(result.data);
+                const res = await axiosInstance.get('/chat/rooms');
+                if (res.data.success) {
+                    setRooms(res.data.data);
                 }
             } catch (error) {
                 console.error("Gagal load chat rooms:", error);
@@ -68,23 +62,23 @@ export default function ChatGlobalWorker() {
                     {activeRooms.map((room, index) => (
                         <motion.div key={room.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                             <Link to={`/carrier/dashboard/nego/${room.id}`}
-                                className={`flex items-start md:items-center flex-col md:flex-row gap-4 p-5 rounded-2xl border transition-all duration-300 group ${cardBg} ${hoverBg}`}
+                                className={`flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl border transition-all duration-300 group overflow-hidden ${cardBg} ${hoverBg}`}
                             >
-                                <div className="flex-1 min-w-0 w-full">
+                                <div className="flex-1 min-w-0 w-full overflow-hidden">
                                     <div className="flex items-center justify-between mb-1">
                                         <h3 className={`font-bold truncate text-base ${textPrimary} group-hover:text-emerald-500 transition-colors`}>{room.judul_tugas}</h3>
                                         {room.last_message && (
-                                            <span className={`text-[10px] shrink-0 ml-4 ${textSecondary}`}>
+                                            <span className={`text-[10px] shrink-0 ml-2 ${textSecondary}`}>
                                                 {new Date(room.last_message.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         )}
                                     </div>
 
                                     <p className={`text-sm mb-3 flex items-center gap-1.5 ${textSecondary}`}>
-                                        <User className="w-4 h-4" /> Klien: <span className="font-medium text-emerald-500">{room.other_party_name}</span>
+                                        <User className="w-4 h-4 shrink-0" /> <span className="truncate">Klien: <span className="font-medium text-emerald-500">{room.other_party_name}</span></span>
                                     </p>
 
-                                    <div className={`text-sm truncate pr-8 ${room.unread_count > 0 ? (isDark ? 'text-white font-bold' : 'text-gray-900 font-bold') : textSecondary}`}>
+                                    <div className={`text-sm truncate w-full ${room.unread_count > 0 ? (isDark ? 'text-white font-bold' : 'text-gray-900 font-bold') : textSecondary}`}>
                                         {room.last_message ? (
                                             <span>{room.last_message.text}</span>
                                         ) : (
@@ -93,7 +87,7 @@ export default function ChatGlobalWorker() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between w-full md:w-auto md:flex-col md:items-end gap-3 shrink-0">
+                                <div className="flex items-center justify-between w-full sm:w-auto sm:flex-col sm:items-end gap-3 shrink-0 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-slate-700/50">
                                     <span className={`px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider rounded border ${isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                                         {room.status_pengerjaan.replace('_', ' ')}
                                     </span>
@@ -104,7 +98,7 @@ export default function ChatGlobalWorker() {
                                                 {room.unread_count > 9 ? '9+' : room.unread_count}
                                             </span>
                                         )}
-                                        <div className={`p-2 rounded-xl transition-colors ${isDark ? 'bg-slate-800 text-slate-400 group-hover:bg-emerald-500 group-hover:text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-600'}`}>
+                                        <div className={`p-2 rounded-xl hidden sm:flex transition-colors ${isDark ? 'bg-slate-800 text-slate-400 group-hover:bg-emerald-500 group-hover:text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-600'}`}>
                                             <ArrowRight className="w-4 h-4" />
                                         </div>
                                     </div>

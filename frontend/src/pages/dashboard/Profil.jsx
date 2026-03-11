@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { Save, User, Mail, Lock, Building2, BookOpen, Loader2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -8,7 +9,6 @@ const fadeUp = {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Profil() {
     const { isDark } = useTheme();
@@ -56,35 +56,24 @@ export default function Profil() {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('jokifast_token');
-
             // Tembak ke API Update Profil
-            const res = await fetch(`${API_URL}/api/auth/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    univ: formData.univ,
-                    jurusan: formData.jurusan
-                })
+            const res = await axiosInstance.put('/auth/profile', {
+                univ: formData.univ,
+                jurusan: formData.jurusan
             });
 
-            const result = await res.json();
-
-            if (result.success) {
+            if (res.data.success) {
                 // Update brankas lokal biar data baru langsung nampil
-                localStorage.setItem('jokifast_user', JSON.stringify(result.user));
+                localStorage.setItem('jokifast_user', JSON.stringify(res.data.user));
                 setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
 
                 // Kosongin kolom password setelah save
                 setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
             } else {
-                throw new Error(result.message);
+                throw new Error(res.data.message);
             }
         } catch (error) {
-            setMessage({ type: 'error', text: error.message || 'Gagal menyimpan perubahan.' });
+            setMessage({ type: 'error', text: error.response?.data?.message || error.message || 'Gagal menyimpan perubahan.' });
         } finally {
             setLoading(false);
         }

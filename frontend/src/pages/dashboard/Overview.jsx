@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, CheckCircle2, Wallet, ArrowRight, TrendingUp, Loader2 } from 'lucide-react';
+import { Clock, CheckCircle2, Wallet, TrendingUp, Search, Filter, Loader2, ArrowRight } from 'lucide-react';
+import axiosInstance from '../../api/axiosInstance';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -41,10 +42,8 @@ export default function Overview() {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                const res = await fetch(`${API_URL}/api/orders`, { headers: { 'Authorization': `Bearer ${token}` } });
-                const result = await res.json();
-                if (result.success) setOrders(result.data);
+                const res = await axiosInstance.get('/orders');
+                if (res.data.success) setOrders(res.data.data);
             } catch (error) {
                 console.error("Gagal mengambil data pesanan:", error);
             } finally {

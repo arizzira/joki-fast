@@ -3,9 +3,9 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, ArrowLeft, ShieldAlert, CheckCircle2, Loader2, XCircle, AlertTriangle, DollarSign, ShieldCheck, Paperclip, FileText, Image as ImageIcon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function NegoRoom() {
     const { id } = useParams();
@@ -51,15 +51,11 @@ export default function NegoRoom() {
     useEffect(() => {
         const fetchOrder = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                const res = await fetch(`${API_URL}/api/orders/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await res.json();
-                if (result.success && result.data.deal_submitted) {
+                const res = await axiosInstance.get(`/orders/${id}`);
+                if (res.data.success && res.data.data.deal_submitted) {
                     setDealSubmitted(true);
-                    setDpAmount(result.data.dp_amount?.toString() || '');
-                    setHargaDeal(result.data.harga_deal?.toString() || '');
+                    setDpAmount(res.data.data.dp_amount?.toString() || '');
+                    setHargaDeal(res.data.data.harga_deal?.toString() || '');
                 }
             } catch (err) {
                 console.error("Error fetch order:", err);
@@ -70,12 +66,7 @@ export default function NegoRoom() {
 
     const markMessagesAsRead = async () => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            if (!token) return;
-            await fetch(`${API_URL}/api/chat/read/${id}`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await axiosInstance.put(`/chat/read/${id}`);
         } catch (error) {
             console.error("Gagal menandai pesan terbaca:", error);
         }
@@ -85,13 +76,9 @@ export default function NegoRoom() {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                const res = await fetch(`${API_URL}/api/chat/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await res.json();
-                if (result.success && result.data.length > 0) {
-                    const historyMsgs = result.data.map(msg => ({
+                const res = await axiosInstance.get(`/chat/${id}`);
+                if (res.data.success && res.data.data.length > 0) {
+                    const historyMsgs = res.data.data.map(msg => ({
                         text: msg.text,
                         sender: msg.senderId === currentUser?.id ? 'me' : 'other',
                         role: msg.role,
@@ -113,7 +100,18 @@ export default function NegoRoom() {
     // 2. WEBSOCKET
     useEffect(() => {
         if (!currentUser) return;
-        const wsUrl = `ws://localhost:8080/chat?order_id=${id}`;
+
+        // Cek VITE_API_URL, kalo http jadi ws, kalo https jadi wss
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const wsProtocol = API_URL.startsWith('https') ? 'wss:' : 'ws:';
+        // Buang '/api' di belakang kalau ada untuk ambil base domainnya, asumsi go chat ada di port 8080 (kalau lokal)
+        let wsBaseParams = API_URL.replace('/api', '').replace('http:', '').replace('https:', '');
+
+        // Kalo di production, biasanya WS di sub path, disesuaikan. Kalo lokal kita pake localhost:8080
+        const wsUrl = API_URL.includes('localhost')
+            ? `ws://localhost:8080/chat?order_id=${id}`
+            : `${wsProtocol}${wsBaseParams}/chat-ws?order_id=${id}`; // Sesuaikan dengan config nginx prod
+
         ws.current = new WebSocket(wsUrl);
 
         ws.current.onopen = () => {
@@ -218,12 +216,7 @@ export default function NegoRoom() {
         ws.current.send(JSON.stringify(messagePayload));
 
         try {
-            const token = localStorage.getItem('jokifast_token');
-            await fetch(`${API_URL}/api/chat/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(messagePayload)
-            });
+            await axiosInstance.post(`/chat/save`, messagePayload);
         } catch (error) {
             console.error("Gagal menyimpan pesan ke database:", error);
         }
@@ -233,22 +226,29 @@ export default function NegoRoom() {
     const handleSubmitDeal = async () => {
         if (!dpAmount || !hargaDeal) return;
         setSubmittingDeal(true);
+        const cleanDp = dpAmount.replace(/\D/g, '');
+        const cleanDeal = hargaDeal.replace(/\D/g, '');
+
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await fetch(`${API_URL}/api/orders/${id}/submit-deal`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ dp_amount: parseInt(dpAmount), harga_deal: parseInt(hargaDeal) })
-            });
-            const result = await res.json();
-            if (result.success) {
+            const payload = {
+                harga_deal: parseInt(cleanDeal),
+                dp_amount: parseInt(cleanDp)
+            };
+
+            // ⚠️ FIX: Endpoint Deal harus sesuai dengan backend /orders/:id/submit-deal
+            const res = await axiosInstance.post(`/orders/${id}/submit-deal`, payload);
+
+            if (res.data.success) {
                 setDealSubmitted(true);
                 setShowDealForm(false);
+                setValidationResult(null);
+                alert("Kesepakatan DP & Harga Total berhasil diajukan ke klien!");
             } else {
-                alert(result.message);
+                alert(res.data.message);
             }
         } catch (error) {
             console.error("Error submit deal:", error);
+            alert("Gagal mengajukan deal. Silakan coba lagi.");
         } finally {
             setSubmittingDeal(false);
         }
@@ -259,12 +259,9 @@ export default function NegoRoom() {
         setValidating(true);
         setValidationResult(null);
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await fetch(`${API_URL}/api/orders/${id}/validate-deal`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-            });
-            const result = await res.json();
+            // ⚠️ FIX: Endpoint Validasi Deal harus sesuai backend /orders/:id/validate-deal
+            const res = await axiosInstance.post(`/orders/${id}/validate-deal`);
+            const result = res.data;
             if (result.success) {
                 setValidationResult(result);
             } else {
@@ -282,14 +279,12 @@ export default function NegoRoom() {
     const handleCancelDeal = async () => {
         if (!confirm('Yakin batalkan negosiasi ini? Order akan kembali ke bursa.')) return;
         try {
-            const token = localStorage.getItem('jokifast_token');
-            await fetch(`${API_URL}/api/orders/${id}/cancel-deal`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            // ⚠️ FIX: Endpoint Batal Deal harus sesuai backend /orders/:id/cancel-deal
+            await axiosInstance.put(`/orders/${id}/cancel-deal`);
             navigate(isWorkerMode ? '/carrier/dashboard' : '/dashboard/pesanan');
         } catch (error) {
             console.error("Error cancel deal:", error);
+            alert("Gagal membatalkan negosiasi.");
         }
     };
 

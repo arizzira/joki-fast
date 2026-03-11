@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { User, Mail, Sparkles, Building2, CreditCard, Save, Loader2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 20 },
@@ -33,23 +33,17 @@ export default function ProfilWorker() {
         e.preventDefault();
         setLoading(true); setSuccess(false);
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await fetch(`${API_URL}/api/auth/profile`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ nama: formData.nama, bank: formData.bank, no_rekening: formData.no_rekening })
-            });
-            const result = await res.json();
-            if (result.success) {
+            const res = await axiosInstance.put('/auth/profile', { nama: formData.nama, bank: formData.bank, no_rekening: formData.no_rekening });
+            if (res.data.success) {
                 const currentUser = JSON.parse(localStorage.getItem('jokifast_user') || '{}');
                 localStorage.setItem('jokifast_user', JSON.stringify({ ...currentUser, nama: formData.nama, bank: formData.bank, no_rekening: formData.no_rekening }));
                 setSuccess(true);
             } else {
-                alert(result.message || 'Gagal menyimpan profil');
+                alert(res.data.message || 'Gagal menyimpan profil');
             }
         } catch (error) {
             console.error("Gagal update profil:", error);
-            alert("Terjadi kesalahan jaringan.");
+            alert(error.response?.data?.message || "Terjadi kesalahan jaringan.");
         } finally {
             setLoading(false);
         }

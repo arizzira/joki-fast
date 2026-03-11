@@ -71,9 +71,11 @@ app.use('/api', limiter);
 
 // 4. AUTH LIMITER (Login/Register) - Kasih jatah lebih banyak
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 menit aja
-    max: 50,                   // 50 kali percobaan
-    message: { success: false, message: 'Login gagal mulu, rehat dulu 15 menit.' }
+    windowMs: 15 * 60 * 1000, // 15 menit
+    max: 500,                  // Naikin jadi 500 biar aman dari 429 test lokal
+    message: { success: false, message: 'Login gagal mulu, rehat dulu 15 menit.' },
+    // Skip kalau lagi ngetes di Localhost
+    skip: (req) => req.ip === '::1' || req.ip === '127.0.0.1' || req.ip === '::ffff:127.0.0.1'
 });
 app.use('/api/auth', authLimiter);
 

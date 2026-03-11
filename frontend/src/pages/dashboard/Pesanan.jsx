@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Eye, Search, Filter, Loader2, Star } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 import BeriRatingModal from '../../components/BerikanRating'
 
 const fadeUp = {
@@ -10,7 +11,6 @@ const fadeUp = {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Helper Format Rupiah
 const formatRupiah = (angka) => {
@@ -69,20 +69,13 @@ export default function Pesanan() {
 
     const fetchMyOrders = async () => {
         try {
-            const token = localStorage.getItem('jokifast_token');
             const userStr = localStorage.getItem('jokifast_user');
             const user = userStr ? JSON.parse(userStr) : null;
 
-            const res = await fetch(`${API_URL}/api/orders`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const res = await axiosInstance.get('/orders');
 
-            const result = await res.json();
-
-            if (result.success && user) {
-                const myOrders = result.data.filter(o => o.nama_klien === user.nama);
+            if (res.data.success && user) {
+                const myOrders = res.data.data.filter(o => o.nama_klien === user.nama);
                 setOrders(myOrders);
             }
         } catch (error) {

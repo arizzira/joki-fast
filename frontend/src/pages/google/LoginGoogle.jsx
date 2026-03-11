@@ -1,11 +1,6 @@
 import React, { useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../supabaseClient';
 import axios from 'axios';
-
-// Ganti URL dan KEY ini ngambil dari menu Project Settings > API di Supabase lu
-const supabaseUrl = 'https://xyzabcdefgh.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR...'; 
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const LoginGoogle = () => {
     useEffect(() => {
@@ -15,7 +10,7 @@ const LoginGoogle = () => {
             if (session) {
                 const user = session.user;
                 console.log("Mantap! Dapet data dari Google:", user);
-                
+
                 // Kirim datanya ke backend Node.js + Prisma lu
                 simpanKeDatabaseKita(user);
             }
@@ -31,7 +26,7 @@ const LoginGoogle = () => {
                 nama: googleUser.user_metadata.full_name,
                 googleId: googleUser.id // Opsional, simpan ID Supabase-nya
             });
-            
+
             // Simpan token buatan backend lu ke localStorage
             localStorage.setItem('token', response.data.token);
             alert("Login Berhasil Bro!");
@@ -49,8 +44,8 @@ const LoginGoogle = () => {
     };
 
     return (
-        <button 
-            onClick={handleLogin} 
+        <button
+            onClick={handleLogin}
             className="bg-white text-gray-800 font-bold py-2 px-4 rounded shadow hover:bg-gray-100 flex items-center"
         >
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 mr-2" />

@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, X, Loader2, Send, CheckCircle } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import axiosInstance from '../api/axiosInstance';
 
 export default function BeriRatingModal({ isOpen, onClose, orderId, onSuccess, isDark }) {
     const [rating, setRating] = useState(0);
@@ -21,11 +19,7 @@ export default function BeriRatingModal({ isOpen, onClose, orderId, onSuccess, i
 
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await axios.post(`${API_URL}/api/orders/${orderId}/rating`,
-                { rating, ulasan },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const res = await axiosInstance.post(`/orders/${orderId}/rating`, { rating, ulasan });
 
             if (res.data.success) {
                 setSuccessMsg('Terima kasih atas ulasan Anda!');
@@ -96,8 +90,8 @@ export default function BeriRatingModal({ isOpen, onClose, orderId, onSuccess, i
                                         >
                                             <Star
                                                 className={`w-10 h-10 transition-colors ${star <= (hoveredStar || rating)
-                                                        ? 'fill-amber-400 text-amber-400'
-                                                        : isDark ? 'text-slate-700' : 'text-slate-300'
+                                                    ? 'fill-amber-400 text-amber-400'
+                                                    : isDark ? 'text-slate-700' : 'text-slate-300'
                                                     }`}
                                             />
                                         </button>

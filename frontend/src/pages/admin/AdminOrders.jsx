@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ShoppingCart, Loader2, Search } from 'lucide-react';
-import axios from 'axios';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminOrders() {
     const [orders, setOrders] = useState([]);
@@ -14,10 +13,7 @@ export default function AdminOrders() {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                const res = await axios.get(`${API_URL}/api/admin/orders`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await axiosInstance.get('/admin/orders');
                 if (res.data.success) {
                     setOrders(res.data.data);
                 }

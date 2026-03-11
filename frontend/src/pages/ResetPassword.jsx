@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import axiosInstance from '../api/axiosInstance';
 import { Lock, Eye, EyeOff, Loader2, ArrowLeft, CheckCircle, ShieldCheck } from 'lucide-react';
-import axios from 'axios';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 30 },
@@ -44,7 +44,7 @@ export default function ResetPassword() {
 
         setLoading(true);
         try {
-            await axios.post(`${API_URL}/api/auth/reset-password`, { token, newPassword: password });
+            await axiosInstance.post('/auth/reset-password', { token, newPassword: password });
             setSuccess(true);
             setTimeout(() => navigate('/login'), 3000); // Auto redirect ke login
         } catch (err) {

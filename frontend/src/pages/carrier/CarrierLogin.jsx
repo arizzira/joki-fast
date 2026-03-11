@@ -2,13 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Briefcase, Wallet, CheckCircle } from 'lucide-react';
-import axios from 'axios';
-
+import axiosInstance from '../../api/axiosInstance';
 // KITA BALIKIN KE SINI AJA BIAR LU GAK PUSING BIKIN FILE BARU
-import { createClient } from '@supabase/supabase-js';
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '../../supabaseClient';
 
 const GoogleIcon = () => (
     <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
@@ -30,7 +26,6 @@ const workerTestimonials = [
     { name: 'Clara M.', text: 'Platform yang sangat membantu buat mahasiswa IT yang pengen cari penghasilan tambahan dari ngoding.' }
 ];
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function CarrierLogin() { // Sesuaikan nama function lu
     const navigate = useNavigate();
@@ -60,7 +55,7 @@ export default function CarrierLogin() { // Sesuaikan nama function lu
                     setLoadingGoogle(true);
                     const user = session.user;
 
-                    const response = await axios.post(`${API_URL}/api/auth/google`, {
+                    const response = await axiosInstance.post('/auth/google', {
                         email: user.email,
                         nama: user.user_metadata.full_name,
                         googleId: user.id,

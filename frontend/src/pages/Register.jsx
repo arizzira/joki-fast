@@ -2,12 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, MessageCircle, ArrowLeft, Loader2 } from 'lucide-react';
-import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import axiosInstance from '../api/axiosInstance';
+import { supabase } from '../supabaseClient';
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -23,7 +19,6 @@ const fadeUp = {
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -59,8 +54,8 @@ export default function Register() {
                 try {
                     setLoadingGoogle(true); // NYALAIN LOADING PAS BALIK DARI GOOGLE
                     const user = session.user;
-                    
-                    const response = await axios.post(`${API_URL}/api/auth/google`, {
+
+                    const response = await axiosInstance.post('/auth/google', {
                         email: user.email,
                         nama: user.user_metadata.full_name,
                         googleId: user.id
@@ -70,7 +65,7 @@ export default function Register() {
                     localStorage.setItem('jokifast_user', JSON.stringify(response.data.user));
 
                     alert('Registrasi via Google Berhasil! Langsung masuk ke Dashboard...');
-                    navigate('/dashboard'); 
+                    navigate('/dashboard');
                 } catch (err) {
                     setError('Gagal sinkronisasi pendaftaran Google ke sistem JokiFast.');
                 } finally {
@@ -95,22 +90,12 @@ export default function Register() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nama, email, password }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || 'Registrasi gagal. Silakan coba lagi.');
-            }
+            const res = await axiosInstance.post('/auth/register', { nama, email, password });
 
             alert('Registrasi berhasil! Silakan login dengan akun Anda.');
             navigate('/login');
         } catch (err) {
-            setError(err.message);
+            setError(err.response?.data?.message || err.message || 'Registrasi gagal. Silakan coba lagi.');
         } finally {
             setLoading(false);
         }
@@ -251,10 +236,10 @@ export default function Register() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* TOMBOL GOOGLE UDAH DI-UPGRADE PAKAI LOADING STATE */}
-                        <button 
-                            onClick={handleGoogleLogin} 
+                        <button
+                            onClick={handleGoogleLogin}
                             disabled={loadingGoogle}
-                            type="button" 
+                            type="button"
                             className="flex items-center justify-center gap-3 w-full py-3 bg-slate-50 lg:bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl text-sm font-semibold text-slate-700 transition-all duration-200"
                         >
                             {loadingGoogle ? (

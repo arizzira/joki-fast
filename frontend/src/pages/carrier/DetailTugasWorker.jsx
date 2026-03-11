@@ -3,8 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Clock, CreditCard, Briefcase, User, CheckCircle2, Loader2, AlertTriangle, FileText, Paperclip, Download, Upload, MessageSquare, ShieldCheck, Link2, Image, Trash2, Send, Edit3, XCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function DetailTugasWorker() {
     const { id } = useParams();
@@ -31,11 +31,10 @@ export default function DetailTugasWorker() {
 
     const fetchOrder = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/orders/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const result = await res.json();
-            if (result.success) {
-                setOrder(result.data);
-                setProgressNote(result.data.progress_note || '');
+            const res = await axiosInstance.get(`/orders/${id}`);
+            if (res.data.success) {
+                setOrder(res.data.data);
+                setProgressNote(res.data.data.progress_note || '');
             }
         } catch (error) { console.error("Gagal fetch:", error); }
         finally { setLoading(false); }
@@ -46,10 +45,9 @@ export default function DetailTugasWorker() {
     const handleTakeJob = async () => {
         setTakingJob(true);
         try {
-            const res = await fetch(`${API_URL}/api/orders/${id}/take`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
-            const result = await res.json();
-            if (result.success) navigate(`/carrier/dashboard/nego/${id}`);
-            else { alert(result.message); navigate('/carrier/dashboard'); }
+            const res = await axiosInstance.put(`/orders/${id}/take`);
+            if (res.data.success) navigate(`/carrier/dashboard/nego/${id}`);
+            else { alert(res.data.message); navigate('/carrier/dashboard'); }
         } catch (e) { console.error(e); }
         finally { setTakingJob(false); }
     };
@@ -59,26 +57,18 @@ export default function DetailTugasWorker() {
         try {
             if (sendMode === 'LINK') {
                 if (!linkUrl.trim()) { alert('URL wajib diisi'); setSending(false); return; }
-                const res = await fetch(`${API_URL}/api/orders/${id}/add-result`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ tipe: 'LINK', url: linkUrl, caption })
-                });
-                const result = await res.json();
-                if (!result.success) { alert(result.message); setSending(false); return; }
+                const res = await axiosInstance.post(`/orders/${id}/add-result`, { tipe: 'LINK', url: linkUrl, caption });
+                if (!res.data.success) { alert(res.data.message); setSending(false); return; }
             } else {
                 if (!resultFile) { alert('Pilih file terlebih dahulu'); setSending(false); return; }
                 const formData = new FormData();
                 formData.append('file', resultFile);
                 formData.append('tipe', sendMode);
                 formData.append('caption', caption);
-                const res = await fetch(`${API_URL}/api/orders/${id}/add-result`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
+                const res = await axiosInstance.post(`/orders/${id}/add-result`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                const result = await res.json();
-                if (!result.success) { alert(result.message); setSending(false); return; }
+                if (!res.data.success) { alert(res.data.message); setSending(false); return; }
             }
             setSendMode(null); setResultFile(null); setLinkUrl(''); setCaption('');
             await fetchOrder();
@@ -89,7 +79,7 @@ export default function DetailTugasWorker() {
     const handleDeleteResult = async (resultId) => {
         if (!confirm('Hapus hasil ini?')) return;
         try {
-            await fetch(`${API_URL}/api/orders/${id}/result/${resultId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            await axiosInstance.delete(`/orders/${id}/result/${resultId}`);
             await fetchOrder();
         } catch (e) { console.error(e); }
     };
@@ -97,10 +87,7 @@ export default function DetailTugasWorker() {
     const handleUpdateProgress = async () => {
         setUpdatingProgress(true);
         try {
-            await fetch(`${API_URL}/api/orders/${id}/progress`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ progress_note: progressNote })
-            });
+            await axiosInstance.put(`/orders/${id}/progress`, { progress_note: progressNote });
             setShowProgressForm(false);
             await fetchOrder();
         } catch (e) { console.error(e); }
@@ -111,10 +98,9 @@ export default function DetailTugasWorker() {
         if (!confirm('Tandai tugas selesai? Klien akan diminta me-review.')) return;
         setCompleting(true);
         try {
-            const res = await fetch(`${API_URL}/api/orders/${id}/complete`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
-            const result = await res.json();
-            if (result.success) await fetchOrder();
-            else alert(result.message);
+            const res = await axiosInstance.put(`/orders/${id}/complete`);
+            if (res.data.success) await fetchOrder();
+            else alert(res.data.message);
         } catch (e) { console.error(e); }
         finally { setCompleting(false); }
     };

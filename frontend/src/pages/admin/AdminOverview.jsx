@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, Briefcase, ShoppingCart, DollarSign, Loader2, TrendingUp } from 'lucide-react';
-import axios from 'axios';
+import { Users, Briefcase, ShoppingCart, DollarSign, TrendingUp, Loader2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminOverview() {
     const [stats, setStats] = useState(null);
@@ -13,10 +12,7 @@ export default function AdminOverview() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                const res = await axios.get(`${API_URL}/api/admin/stats`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await axiosInstance.get('/admin/stats');
                 if (res.data.success) {
                     setStats(res.data.data);
                 }

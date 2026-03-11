@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import axiosInstance from '../../api/axiosInstance';
 import { Mail, ArrowLeft, ShieldCheck, CheckCircle, Loader2 } from 'lucide-react';
 
 const fadeUp = {
@@ -26,21 +27,11 @@ export default function CarrierForgotPassword() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${API_URL}/api/auth/carrier/forgot-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || 'Terjadi kesalahan.');
-            }
+            const res = await axiosInstance.post('/auth/carrier/forgot-password', { email });
 
             setSuccess(true);
         } catch (err) {
-            setError(err.message);
+            setError(err.response?.data?.message || err.message || 'Terjadi kesalahan.');
         } finally {
             setLoading(false);
         }

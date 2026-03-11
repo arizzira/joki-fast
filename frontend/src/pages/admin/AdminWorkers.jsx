@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Users, CheckCircle, XCircle, Loader2, ExternalLink, ShieldAlert, FileText } from 'lucide-react';
-import axios from 'axios';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminWorkers() {
     const [workers, setWorkers] = useState([]);
@@ -13,10 +12,7 @@ export default function AdminWorkers() {
 
     const fetchWorkers = async () => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await axios.get(`${API_URL}/api/admin/workers`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axiosInstance.get('/admin/workers');
             if (res.data.success) {
                 setWorkers(res.data.data);
             }
@@ -35,11 +31,7 @@ export default function AdminWorkers() {
 
         setProcessingId(id);
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await axios.put(`${API_URL}/api/admin/workers/${id}/status`,
-                { status },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const res = await axiosInstance.put(`/admin/workers/${id}/status`, { status });
 
             if (res.data.success) {
                 fetchWorkers(); // Refresh tabel

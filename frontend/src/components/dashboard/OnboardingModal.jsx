@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, GraduationCap, Building2, BookOpen, Calendar, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { GraduationCap, Briefcase, ArrowRight, Loader2, Building2, BookOpen, Calendar, CheckCircle2 } from 'lucide-react';
+import axiosInstance from '../../api/axiosInstance';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function OnboardingModal({ isOpen, onClose }) {
     const [step, setStep] = useState(1);
@@ -27,28 +27,18 @@ export default function OnboardingModal({ isOpen, onClose }) {
     const saveToDB = async (dataToSave) => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await fetch(`${API_URL}/api/auth/profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(dataToSave)
-            });
+            const res = await axiosInstance.put('/auth/profile', dataToSave);
 
-            const result = await res.json();
-
-            if (result.success) {
+            if (res.data.success) {
                 // Update brankas lokal di browser lu
-                localStorage.setItem('jokifast_user', JSON.stringify(result.user));
+                localStorage.setItem('jokifast_user', JSON.stringify(res.data.user));
                 onClose(); // Tutup modal selamanya
             } else {
-                alert(result.message);
+                alert(res.data.message);
             }
         } catch (error) {
             console.error("Gagal simpan data onboarding", error);
-            alert("Terjadi kesalahan sistem.");
+            alert(error.response?.data?.message || "Terjadi kesalahan sistem.");
         } finally {
             setLoading(false);
         }

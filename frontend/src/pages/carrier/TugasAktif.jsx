@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { Link } from 'react-router-dom';
 import { ClipboardList, Eye, Loader2, FileText } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 20 },
@@ -49,12 +49,8 @@ export default function TugasAktif() {
     useEffect(() => {
         const fetchWorkerOrders = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                const res = await fetch(`${API_URL}/api/orders/worker`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await res.json();
-                if (result.success) setOrders(result.data);
+                const res = await axiosInstance.get('/orders/worker');
+                if (res.data.success) setOrders(res.data.data);
             } catch (error) {
                 console.error("Gagal ambil tugas aktif:", error);
             } finally {

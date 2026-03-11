@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { CreditCard, CheckCircle, XCircle, Loader2, Clock, Landmark, MessageCircle } from 'lucide-react';
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useTheme } from '../../context/ThemeContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminWithdrawals() {
     const [withdrawals, setWithdrawals] = useState([]);
@@ -13,10 +12,7 @@ export default function AdminWithdrawals() {
 
     const fetchWithdrawals = async () => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await axios.get(`${API_URL}/api/admin/withdrawals`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axiosInstance.get('/admin/withdrawals');
             if (res.data.success) {
                 setWithdrawals(res.data.data);
             }
@@ -42,11 +38,7 @@ export default function AdminWithdrawals() {
 
         setProcessingId(id);
         try {
-            const token = localStorage.getItem('jokifast_token');
-            const res = await axios.put(`${API_URL}/api/admin/withdrawals/${id}`,
-                { status, catatan_admin: catatan },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const res = await axiosInstance.put(`/admin/withdrawals/${id}`, { status, catatan_admin: catatan });
 
             if (res.data.success) {
                 fetchWithdrawals(); // Refresh data
@@ -122,9 +114,9 @@ export default function AdminWithdrawals() {
                                                         }`}
                                                 >
                                                     <MessageCircle className="w-3 h-3" /> {(wd.no_wa || wd.nomor_wa || wd.whatsapp || wd.worker?.whatsappNumber)}
-                                                </a>
+                                                </a >
                                             )}
-                                        </td>
+                                        </td >
                                         <td className="px-6 py-4 min-w-[250px]">
                                             <div className="flex items-center gap-2">
                                                 <Landmark className={`w-4 h-4 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
@@ -173,13 +165,13 @@ export default function AdminWithdrawals() {
                                                 <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>-</span>
                                             )}
                                         </td>
-                                    </tr>
+                                    </tr >
                                 ))
                             )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                        </tbody >
+                    </table >
+                </div >
+            </div >
+        </div >
     );
 }

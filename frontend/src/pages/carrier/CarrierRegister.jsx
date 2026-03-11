@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import axiosInstance from '../../api/axiosInstance';
 import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Loader2, Briefcase } from 'lucide-react';
 
 const fadeUp = {
@@ -31,24 +32,14 @@ export default function CarrierRegister() {
 
         try {
             // 1. Ubah endpoint ke API register yang udah ada di backend
-            const res = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // 2. WAJIB tambahin role: 'WORKER' biar disimpen khusus sbg worker
-                // (Note: keahlian sementara gak dikirim karena di Prisma belum kita bikin kolomnya)
-                body: JSON.stringify({ nama, email, password, role: 'WORKER' }),
+            const res = await axiosInstance.post('/auth/register', {
+                nama, email, password, role: 'WORKER'
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || 'Registrasi gagal.');
-            }
 
             // Redirect ke carrier login dengan pesan sukses
             navigate('/carrier/login');
         } catch (err) {
-            setError(err.message);
+            setError(err.response?.data?.message || err.message || 'Registrasi gagal.');
         } finally {
             setLoading(false);
         }

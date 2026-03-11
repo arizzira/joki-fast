@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { Search, Clock, CreditCard, ChevronRight, User, Briefcase, FileText, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
@@ -14,7 +15,6 @@ const staggerContainer = {
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const formatGaji = (hargaTotal) => {
     if (!hargaTotal || hargaTotal === 0) return "Harga Nego";
@@ -31,12 +31,8 @@ export default function BursaTugas() {
     useEffect(() => {
         const fetchMarketOrders = async () => {
             try {
-                const token = localStorage.getItem('jokifast_token');
-                const res = await fetch(`${API_URL}/api/orders/market`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await res.json();
-                if (result.success) setOrders(result.data);
+                const res = await axiosInstance.get('/orders/market');
+                if (res.data.success) setOrders(res.data.data);
             } catch (error) {
                 console.error("Gagal mengambil data bursa tugas:", error);
             } finally {

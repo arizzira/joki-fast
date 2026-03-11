@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, Bell, Search, CalendarDays, Check, CheckCheck, Sun, Moon } from 'lucide-react';
+import { Menu, Search, Filter, Bell, MessageSquare, ChevronDown, CheckCircle2, AlertCircle, TrendingUp, X, Loader2, CalendarDays, Check, CheckCheck, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Topbar({ onMenuClick }) {
     const navigate = useNavigate();
@@ -33,11 +33,8 @@ export default function Topbar({ onMenuClick }) {
 
     const fetchNotifications = async () => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            if (!token) return;
-            const res = await fetch(`${API_URL}/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const result = await res.json();
-            if (result.success) { setNotifications(result.data); setUnreadCount(result.unreadCount); }
+            const res = await axiosInstance.get('/notifications');
+            if (res.data.success) { setNotifications(res.data.data); setUnreadCount(res.data.unreadCount); }
         } catch (error) { console.error("Gagal mendapatkan notifikasi:", error); }
     };
 
@@ -49,8 +46,7 @@ export default function Topbar({ onMenuClick }) {
 
     const markAsRead = async (id) => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            await fetch(`${API_URL}/api/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
+            await axiosInstance.put(`/notifications/${id}/read`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) { console.error("Gagal tandai dibaca:", error); }
@@ -58,8 +54,7 @@ export default function Topbar({ onMenuClick }) {
 
     const markAllAsRead = async () => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            await fetch(`${API_URL}/api/notifications/read-all`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
+            await axiosInstance.put('/notifications/read-all');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
         } catch (error) { console.error("Gagal tandai semua dibaca:", error); }

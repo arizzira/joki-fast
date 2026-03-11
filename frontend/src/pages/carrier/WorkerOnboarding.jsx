@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { Briefcase, GraduationCap, Link as LinkIcon, Loader2, CheckCircle, UploadCloud, FileText, Phone } from 'lucide-react';
-import axios from 'axios';
+import axios from 'axios'; // We keep axios for Cloudinary uploads
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function WorkerOnboarding() {
     const [isOpen, setIsOpen] = useState(false);
@@ -31,9 +31,7 @@ export default function WorkerOnboarding() {
 
             try {
                 // Tarik data paling FRESH dari database
-                const res = await axios.get(`${API_URL}/api/auth/me`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await axiosInstance.get('/auth/me');
 
                 if (res.data.success) {
                     const freshUser = res.data.user;
@@ -124,16 +122,12 @@ export default function WorkerOnboarding() {
             setUploadingText('Menyimpan Profil...');
 
             // 2. SIMPAN DATA KE BACKEND JOKIFAST
-            const token = localStorage.getItem('jokifast_token');
-            const res = await axios.put(`${API_URL}/api/auth/profile`, {
+            const res = await axiosInstance.put('/auth/profile', {
                 univ: statusMhs === 'mahasiswa' ? univ : 'Umum / Profesional',
                 keahlian: keahlian,
                 portfolio_link: finalPortfolioLink,
                 whatsappNumber: whatsappNumber // MANTAP, Lempar WA ke backend!
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
             });
-
             if (res.data.success) {
                 localStorage.setItem('jokifast_user', JSON.stringify(res.data.user));
                 setIsOpen(false);

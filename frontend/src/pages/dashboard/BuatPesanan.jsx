@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { Send, FileText, Calendar, Tag, ChevronDown, AlignLeft, Sparkles, Phone, UploadCloud, File, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
@@ -9,7 +10,6 @@ const fadeUp = {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function BuatPesanan() {
     const navigate = useNavigate();
@@ -113,27 +113,16 @@ export default function BuatPesanan() {
             }
 
             // Tembak API Backend
-            const res = await fetch(`${API_URL}/api/orders/create`, {
-                method: 'POST',
+            const res = await axiosInstance.post('/orders/create', payload, {
                 headers: {
-                    // PENTING: JANGAN pasang 'Content-Type': 'application/json' di sini! 
-                    // Browser bakal otomatis ngeset Content-Type multipart/form-data kalau detect FormData
-                    'Authorization': `Bearer ${token}`
-                },
-                body: payload // Langsung lempar payload FormData-nya
+                    'Content-Type': 'multipart/form-data'
+                }
             });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || 'Gagal membuat pesanan');
-            }
-
-            alert('Pesanan berhasil dibuat! Silakan cek menu Pesanan Saya.');
+            alert('Pesanan berhasil dibuat!');
             navigate('/dashboard/pesanan');
-
-        } catch (err) {
-            alert(err.message);
+        } catch (error) {
+            alert(error.response?.data?.message || error.message);
         } finally {
             setLoading(false);
         }

@@ -7,16 +7,10 @@ import {
     Clock, XCircle, Loader2 // 👇 Ikon baru buat blocker
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
-import { createClient } from '@supabase/supabase-js';
-import axios from 'axios'; // 👇 Import axios buat ngecek user
+import { supabase } from '../supabaseClient';
+import axiosInstance from '../api/axiosInstance';
 
 import WorkerOnboarding from '../pages/carrier/WorkerOnboarding';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 function WorkerDashboard() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -50,9 +44,7 @@ function WorkerDashboard() {
             }
 
             try {
-                const res = await axios.get(`${API_URL}/api/auth/me`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await axiosInstance.get('/auth/me');
 
                 if (res.data.success) {
                     setUser(res.data.user);
@@ -80,13 +72,10 @@ function WorkerDashboard() {
         try {
             const token = localStorage.getItem('jokifast_token');
             if (!token) return;
-            const res = await fetch(`${API_URL}/api/notifications`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const result = await res.json();
-            if (result.success) {
-                setNotifications(result.data);
-                setUnreadCount(result.unreadCount);
+            const res = await axiosInstance.get('/notifications');
+            if (res.data.success) {
+                setNotifications(res.data.data);
+                setUnreadCount(res.data.unreadCount);
             }
         } catch (error) {
             console.error("Gagal mendapatkan notifikasi:", error);
@@ -99,11 +88,8 @@ function WorkerDashboard() {
             try {
                 const token = localStorage.getItem('jokifast_token');
                 if (!token) return;
-                const res = await fetch(`${API_URL}/api/chat/unread-count`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const result = await res.json();
-                if (result.success) setChatUnreadCount(result.count);
+                const res = await axiosInstance.get('/chat/unread-count');
+                if (res.data.success) setChatUnreadCount(res.data.count);
             } catch (err) { console.error(err); }
         };
         fetchChatUnread();
@@ -117,10 +103,7 @@ function WorkerDashboard() {
 
     const markAsRead = async (id) => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            await fetch(`${API_URL}/api/notifications/${id}/read`, {
-                method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await axiosInstance.put(`/notifications/${id}/read`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) { console.error("Gagal tandai dibaca:", error); }
@@ -128,10 +111,7 @@ function WorkerDashboard() {
 
     const markAllAsRead = async () => {
         try {
-            const token = localStorage.getItem('jokifast_token');
-            await fetch(`${API_URL}/api/notifications/read-all`, {
-                method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await axiosInstance.put('/notifications/read-all');
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
         } catch (error) { console.error("Gagal tandai semua:", error); }

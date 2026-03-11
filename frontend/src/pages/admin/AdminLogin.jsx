@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Loader2, Lock } from 'lucide-react';
+import { ShieldCheck, Lock, Loader2 } from 'lucide-react';
+import axiosInstance from '../../api/axiosInstance';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminLogin() {
     const [email, setEmail] = useState('');
@@ -18,7 +18,7 @@ export default function AdminLogin() {
         setError('');
 
         try {
-            const res = await axios.post(`${API_URL}/api/auth/admin-login`, { email, password });
+            const res = await axiosInstance.post('/auth/admin-login', { email, password });
 
             if (res.data.success) {
                 localStorage.setItem('jokifast_token', res.data.token);

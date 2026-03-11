@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Download, QrCode, Clock, CheckCircle2, FileText, UploadCloud, AlertCircle, Loader2, Paperclip, MessageCircle, RotateCcw, ShieldCheck, Eye, Link2, X, Image } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import axiosInstance from '../../api/axiosInstance';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
 
 export default function DetailPesanan() {
@@ -26,18 +26,16 @@ export default function DetailPesanan() {
 
     const fetchOrder = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/orders/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const result = await res.json();
-            if (result.success) setOrder(result.data);
+            const res = await axiosInstance.get(`/orders/${id}`);
+            if (res.data.success) setOrder(res.data.data);
         } catch (error) { console.error("Gagal fetch:", error); }
         finally { setLoading(false); }
     };
 
     const fetchInvoices = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/invoices/order/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const result = await res.json();
-            if (result.success) setInvoices(result.data);
+            const res = await axiosInstance.get(`/invoices/order/${id}`);
+            if (res.data.success) setInvoices(res.data.data);
         } catch (error) { console.error("Gagal fetch invoices:", error); }
     };
 
@@ -47,10 +45,9 @@ export default function DetailPesanan() {
         if (!confirm('Terima hasil tugas ini? Invoice pelunasan akan otomatis dibuat.')) return;
         setAccepting(true);
         try {
-            const res = await fetch(`${API_URL}/api/orders/${id}/accept`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } });
-            const result = await res.json();
-            if (result.success) { await fetchOrder(); await fetchInvoices(); }
-            else alert(result.message);
+            const res = await axiosInstance.put(`/orders/${id}/accept`);
+            if (res.data.success) { await fetchOrder(); await fetchInvoices(); }
+            else alert(res.data.message);
         } catch (e) { console.error(e); }
         finally { setAccepting(false); }
     };
@@ -58,13 +55,9 @@ export default function DetailPesanan() {
     const handleRevision = async () => {
         setRevising(true);
         try {
-            const res = await fetch(`${API_URL}/api/orders/${id}/revision`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ catatan: revisionNote })
-            });
-            const result = await res.json();
-            if (result.success) { setShowRevisionForm(false); setRevisionNote(''); await fetchOrder(); }
-            alert(result.message);
+            const res = await axiosInstance.post(`/orders/${id}/revision`, { catatan: revisionNote });
+            if (res.data.success) { setShowRevisionForm(false); setRevisionNote(''); await fetchOrder(); }
+            alert(res.data.message);
         } catch (e) { console.error(e); }
         finally { setRevising(false); }
     };
@@ -77,38 +70,36 @@ export default function DetailPesanan() {
     // ============================================================
     const handleBayarMidtrans = async (tipeTagihan) => {
         try {
-            // 1. Tembak endpoint create manual dulu
-            const resCreate = await fetch(`${API_URL}/api/invoices/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ order_id: id, tipe: tipeTagihan })
-            });
-            const dataCreate = await resCreate.json();
+            let invoiceId = null;
 
-            // TANGKAP ID INVOICE (Bisa dari invoice baru, atau invoice lama yang udah ada)
-            const invoiceId = dataCreate.data?.id;
+            try {
+                // 1. Coba create invoice baru
+                const resCreate = await axiosInstance.post('/invoices/create', { order_id: id, tipe: tipeTagihan });
+                invoiceId = resCreate.data.data?.id;
+            } catch (err) {
+                // Kalo error 400 (invoice udah ada), ambil ID dari response error atau dari state invoices kita
+                if (err.response && err.response.status === 400 && err.response.data.data) {
+                    invoiceId = err.response.data.data.id;
+                } else if (err.response && err.response.status === 400) {
+                    const existing = invoices.find(i => i.tipe === tipeTagihan);
+                    if (existing) invoiceId = existing.id;
+                } else {
+                    throw err; // Lempar ke catch blok utama kalo error lain
+                }
+            }
 
             // 2. Minta Token Midtrans
-            const resToken = await fetch(`${API_URL}/api/invoices/pay-midtrans`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ orderId: id, tipe: tipeTagihan })
-            });
+            const resToken = await axiosInstance.post('/invoices/pay-midtrans', { orderId: id, tipe: tipeTagihan });
 
-            const dataToken = await resToken.json();
-
-            if (dataToken.success && dataToken.token) {
+            if (resToken.data.success && resToken.data.token) {
                 // 3. Panggil Pop-Up Midtrans 🪄
-                window.snap.pay(dataToken.token, {
+                window.snap.pay(resToken.data.token, {
                     onSuccess: async function (result) {
 
                         // 🔥 JALUR PINTAS LOCALHOST: 
                         // Kasih tau backend secara manual kalau kita udah sukses bayar
                         if (invoiceId) {
-                            await fetch(`${API_URL}/api/invoices/${invoiceId}/verify`, {
-                                method: 'PUT',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
+                            await axiosInstance.put(`/invoices/${invoiceId}/verify`);
                         }
 
                         alert("Pembayaran Sukses Bro! 🎉");
@@ -125,11 +116,11 @@ export default function DetailPesanan() {
                     }
                 });
             } else {
-                alert(dataToken.message || "Gagal mendapatkan token pembayaran.");
+                alert(resToken.data.message || "Gagal mendapatkan token pembayaran.");
             }
         } catch (error) {
             console.error("Midtrans Error:", error);
-            alert("Terjadi kesalahan pada server pembayaran.");
+            alert("Terjadi kesalahan pada server pembayaran: " + (error.response?.data?.message || error.message));
         }
     };
 

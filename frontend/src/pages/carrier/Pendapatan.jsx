@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axiosInstance from '../../api/axiosInstance';
 import { Wallet, ArrowDownRight, ArrowUpRight, TrendingUp, History, Loader2, FileText, X, AlertCircle, CheckCircle, Building, CreditCard, Phone } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 20 },
@@ -41,18 +41,12 @@ export default function Pendapatan() {
             if (storedUser.whatsappNumber) setWhatsapp(storedUser.whatsappNumber); // 👇 AUTO-FILL WA
 
             // Fetch Orders
-            const resOrders = await fetch(`${API_URL}/api/orders/worker`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const resultOrders = await resOrders.json();
-            if (resultOrders.success) setOrders(resultOrders.data);
+            const resOrders = await axiosInstance.get('/orders/worker');
+            if (resOrders.data.success) setOrders(resOrders.data.data);
 
             // Fetch Withdrawals
-            const resWd = await fetch(`${API_URL}/api/withdraw/history`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const resultWd = await resWd.json();
-            if (resultWd.success) setWithdrawals(resultWd.data);
+            const resWd = await axiosInstance.get('/withdraw/history');
+            if (resWd.data.success) setWithdrawals(resWd.data.data);
 
         } catch (error) {
             console.error("Gagal ambil data pendapatan:", error);
@@ -113,36 +107,16 @@ export default function Pendapatan() {
 
         setIsSubmitting(true);
         try {
-            const token = localStorage.getItem('jokifast_token');
-
             // 1. UPDATE PROFILE DULU
-            await fetch(`${API_URL}/api/auth/profile`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ bank: bank, no_rekening: noRekening, whatsappNumber: whatsapp })
-            });
+            await axiosInstance.put('/auth/profile', { bank: bank, no_rekening: noRekening, whatsappNumber: whatsapp });
 
             // 2. TEMBAK REQUEST WITHDRAW
-            const res = await fetch(`${API_URL}/api/withdraw/request`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    amount: nominal,
-                    bank: bank,
-                    no_rekening: noRekening,
-                    whatsapp: whatsapp
-                })
+            const res = await axiosInstance.post('/withdraw/request', {
+                amount: nominal, bank: bank, no_rekening: noRekening, whatsapp: whatsapp
             });
 
-            // CEK KALAU SERVER NGASIH ERROR HTML BUKAN JSON
-            if (!res.ok && res.headers.get("content-type")?.indexOf("application/json") === -1) {
-                throw new Error(`Server nyasar! Status: ${res.status}. Rute API mungkin salah.`);
-            }
-
-            const data = await res.json();
-
-            if (data.success) {
-                setModalMessage({ type: 'success', text: 'Berhasil! Permintaan diproses dalam 1x24 Jam.' });
+            if (res.data.success) {
+                setModalMessage({ type: 'success', text: 'Permintaan penarikan berhasil diajukan!' });
 
                 const storedUser = JSON.parse(localStorage.getItem('jokifast_user') || '{}');
                 storedUser.bank = bank;
@@ -158,12 +132,11 @@ export default function Pendapatan() {
                     setModalMessage({ type: '', text: '' });
                 }, 3000);
             } else {
-                setModalMessage({ type: 'error', text: data.message });
+                setModalMessage({ type: 'error', text: res.data.message || 'Gagal mengajukan penarikan.' });
             }
-        } catch (err) {
-            // 👇 INI DIA TERSANGKA UTAMANYA KITA MUNCULIN KE CONSOLE 👇
-            console.error("🔥 ERROR ASLI DARI FRONTEND:", err);
-            setModalMessage({ type: 'error', text: `Error: ${err.message}. Cek Console (F12) Bro!` });
+        } catch (error) {
+            console.error("🔥 ERROR ASLI DARI FRONTEND:", error);
+            setModalMessage({ type: 'error', text: error.response?.data?.message || 'Terjadi kesalahan sistem.' });
         } finally {
             setIsSubmitting(false);
         }
