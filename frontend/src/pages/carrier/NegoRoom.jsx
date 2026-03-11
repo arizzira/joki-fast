@@ -48,53 +48,69 @@ export default function NegoRoom() {
     useEffect(() => { scrollToBottom(); }, [messages]);
 
     // Fetch order to check deal status
+    // 2. WEBSOCKET (Udah Fix URL + Auto Reconnect)
     useEffect(() => {
-        const fetchOrder = async () => {
-            try {
-                const res = await axiosInstance.get(`/orders/${id}`);
-                if (res.data.success && res.data.data.deal_submitted) {
-                    setDealSubmitted(true);
-                    setDpAmount(res.data.data.dp_amount?.toString() || '');
-                    setHargaDeal(res.data.data.harga_deal?.toString() || '');
-                }
-            } catch (err) {
-                console.error("Error fetch order:", err);
-            }
-        };
-        fetchOrder();
-    }, [id]);
+        if (!currentUser) return;
 
-    const markMessagesAsRead = async () => {
-        try {
-            await axiosInstance.put(`/chat/read/${id}`);
-        } catch (error) {
-            console.error("Gagal menandai pesan terbaca:", error);
-        }
-    };
+        let reconnectInterval;
 
-    // 1. FETCH HISTORY
-    useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                const res = await axiosInstance.get(`/chat/${id}`);
-                if (res.data.success && res.data.data.length > 0) {
-                    const historyMsgs = res.data.data.map(msg => ({
-                        text: msg.text,
-                        sender: msg.senderId === currentUser?.id ? 'me' : 'other',
-                        role: msg.role,
-                        isFile: msg.text.startsWith('FILE:'), // Cek apakah pesan berupa file
-                        fileUrl: msg.text.startsWith('FILE:') ? msg.text.replace('FILE:', '') : null
-                    }));
-                    setMessages(historyMsgs);
+        const connectWebSocket = () => {
+            // Langsung comot dari .env lu (Atau localhost kalau lagi ngoding di laptop tanpa .env)
+            const wsBaseUrl = import.meta.env.VITE_CHAT_WS_URL || 'ws://localhost:8080/chat';
+            const wsUrl = `${wsBaseUrl}?order_id=${id}`;
+
+            ws.current = new WebSocket(wsUrl);
+
+            ws.current.onopen = () => {
+                setIsConnected(true);
+                clearInterval(reconnectInterval); // Sukses nyambung? Stop hitungan mundur
+
+                // Biar tulisan "Sistem" nggak dobel-dobel pas HP reconnect
+                setMessages(prev => {
+                    if (!prev.some(m => m.text.includes("masuk ke ruang negosiasi"))) {
+                        return [...prev, { text: `Sistem: Anda masuk ke ruang negosiasi.`, sender: "system", isFile: false }];
+                    }
+                    return prev;
+                });
+            };
+
+            ws.current.onmessage = (event) => {
+                try {
+                    const incomingMsg = JSON.parse(event.data);
+                    if (incomingMsg.sender_id !== currentUser.id) {
+                        const isFile = incomingMsg.text.startsWith('FILE:');
+                        setMessages(prev => [...prev, {
+                            text: incomingMsg.text,
+                            sender: 'other',
+                            role: incomingMsg.role,
+                            isFile: isFile,
+                            fileUrl: isFile ? incomingMsg.text.replace('FILE:', '') : null
+                        }]);
+                        markMessagesAsRead();
+                    }
+                } catch (error) {
+                    console.error("Gagal parse pesan JSON:", error);
                 }
-            } catch (error) {
-                console.error("Gagal ambil history chat:", error);
-            }
+            };
+
+            ws.current.onclose = () => {
+                setIsConnected(false);
+                console.log("🔴 Koneksi terputus! Coba nyambung lagi dalam 3 detik...");
+                // Jurus Anti-Putus buat HP:
+                reconnectInterval = setTimeout(connectWebSocket, 3000);
+            };
         };
-        if (currentUser) {
-            fetchHistory();
-            markMessagesAsRead();
-        }
+
+        connectWebSocket();
+
+        return () => {
+            if (ws.current) {
+                // Matiin onclose sementara biar nggak loop pas pindah halaman
+                ws.current.onclose = null;
+                ws.current.close();
+            }
+            clearTimeout(reconnectInterval);
+        };
     }, [id, currentUser]);
 
     // 2. WEBSOCKET
