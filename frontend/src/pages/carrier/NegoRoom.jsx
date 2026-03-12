@@ -113,50 +113,6 @@ export default function NegoRoom() {
         };
     }, [id, currentUser]);
 
-    // 2. WEBSOCKET
-    useEffect(() => {
-        if (!currentUser) return;
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-        const wsProtocol = API_URL.startsWith('https') ? 'wss:' : 'ws:';
-        let wsBaseParams = API_URL.replace('/api', '').replace('http:', '').replace('https:', '');
-        const wsUrl = API_URL.includes('localhost')
-            ? `ws://localhost:8080/chat?order_id=${id}`
-            : `${wsProtocol}${wsBaseParams}/chat-ws?order_id=${id}`;
-
-        ws.current = new WebSocket(wsUrl);
-
-        ws.current.onopen = () => {
-            setIsConnected(true);
-            setMessages(prev => [...prev, { text: `Sistem: Anda masuk ke ruang negosiasi.`, sender: "system", isFile: false }]);
-        };
-
-        ws.current.onmessage = (event) => {
-            try {
-                const incomingMsg = JSON.parse(event.data);
-                if (incomingMsg.sender_id !== currentUser.id) {
-                    const isFile = incomingMsg.text.startsWith('FILE:');
-                    setMessages(prev => [...prev, {
-                        text: incomingMsg.text,
-                        sender: 'other',
-                        role: incomingMsg.role,
-                        isFile: isFile,
-                        fileUrl: isFile ? incomingMsg.text.replace('FILE:', '') : null
-                    }]);
-                    markMessagesAsRead();
-                }
-            } catch (error) {
-                console.error("Gagal parse pesan JSON:", error);
-            }
-        };
-
-        ws.current.onclose = () => {
-            setIsConnected(false);
-            setMessages(prev => [...prev, { text: "Sistem: Koneksi terputus.", sender: "system", isFile: false }]);
-        };
-
-        return () => { if (ws.current) ws.current.close(); };
-    }, [id, currentUser]);
-
     // 3A. SEND TEXT MESSAGE
     const sendMessage = async (e) => {
         e?.preventDefault();
