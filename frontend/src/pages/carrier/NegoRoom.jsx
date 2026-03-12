@@ -47,15 +47,68 @@ export default function NegoRoom() {
 
     useEffect(() => { scrollToBottom(); }, [messages]);
 
-    // Fetch order to check deal status
-    // 2. WEBSOCKET (Udah Fix URL + Auto Reconnect)
+    // ==========================================
+    // 1A. FETCH ORDER (Cek Status Deal)
+    // ==========================================
+    useEffect(() => {
+        const fetchOrder = async () => {
+            try {
+                const res = await axiosInstance.get(`/orders/${id}`);
+                if (res.data.success && res.data.data.deal_submitted) {
+                    setDealSubmitted(true);
+                    setDpAmount(res.data.data.dp_amount?.toString() || '');
+                    setHargaDeal(res.data.data.harga_deal?.toString() || '');
+                }
+            } catch (err) {
+                console.error("Error fetch order:", err);
+            }
+        };
+        fetchOrder();
+    }, [id]);
+
+    const markMessagesAsRead = async () => {
+        try {
+            await axiosInstance.put(`/chat/read/${id}`);
+        } catch (error) {
+            console.error("Gagal menandai pesan terbaca:", error);
+        }
+    };
+
+    // ==========================================
+    // 1B. FETCH HISTORY (Ini yg Tadi Kehapus Bang!)
+    // ==========================================
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const res = await axiosInstance.get(`/chat/${id}`);
+                if (res.data.success && res.data.data.length > 0) {
+                    const historyMsgs = res.data.data.map(msg => ({
+                        text: msg.text,
+                        sender: msg.senderId === currentUser?.id ? 'me' : 'other',
+                        role: msg.role,
+                        isFile: msg.text.startsWith('FILE:'),
+                        fileUrl: msg.text.startsWith('FILE:') ? msg.text.replace('FILE:', '') : null
+                    }));
+                    setMessages(historyMsgs);
+                }
+            } catch (error) {
+                console.error("Gagal ambil history chat:", error);
+            }
+        };
+        if (currentUser) {
+            fetchHistory();
+            markMessagesAsRead();
+        }
+    }, [id, currentUser]);
+
+    // ==========================================
+    // 2. WEBSOCKET (Jalur Kilat - Cuma Ada 1 Sekarang)
+    // ==========================================
     useEffect(() => {
         if (!currentUser) return;
 
         let reconnectInterval;
-
         const connectWebSocket = () => {
-            // Langsung comot dari .env lu (Atau localhost kalau lagi ngoding di laptop tanpa .env)
             const wsBaseUrl = import.meta.env.VITE_CHAT_WS_URL || 'ws://localhost:8080/chat';
             const wsUrl = `${wsBaseUrl}?order_id=${id}`;
 
@@ -63,9 +116,7 @@ export default function NegoRoom() {
 
             ws.current.onopen = () => {
                 setIsConnected(true);
-                clearInterval(reconnectInterval); // Sukses nyambung? Stop hitungan mundur
-
-                // Biar tulisan "Sistem" nggak dobel-dobel pas HP reconnect
+                clearInterval(reconnectInterval);
                 setMessages(prev => {
                     if (!prev.some(m => m.text.includes("masuk ke ruang negosiasi"))) {
                         return [...prev, { text: `Sistem: Anda masuk ke ruang negosiasi.`, sender: "system", isFile: false }];
@@ -95,8 +146,6 @@ export default function NegoRoom() {
 
             ws.current.onclose = () => {
                 setIsConnected(false);
-                console.log("🔴 Koneksi terputus! Coba nyambung lagi dalam 3 detik...");
-                // Jurus Anti-Putus buat HP:
                 reconnectInterval = setTimeout(connectWebSocket, 3000);
             };
         };
@@ -105,7 +154,6 @@ export default function NegoRoom() {
 
         return () => {
             if (ws.current) {
-                // Matiin onclose sementara biar nggak loop pas pindah halaman
                 ws.current.onclose = null;
                 ws.current.close();
             }
