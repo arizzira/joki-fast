@@ -116,17 +116,12 @@ export default function NegoRoom() {
     // 2. WEBSOCKET
     useEffect(() => {
         if (!currentUser) return;
-
-        // Cek VITE_API_URL, kalo http jadi ws, kalo https jadi wss
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         const wsProtocol = API_URL.startsWith('https') ? 'wss:' : 'ws:';
-        // Buang '/api' di belakang kalau ada untuk ambil base domainnya, asumsi go chat ada di port 8080 (kalau lokal)
         let wsBaseParams = API_URL.replace('/api', '').replace('http:', '').replace('https:', '');
-
-        // Kalo di production, biasanya WS di sub path, disesuaikan. Kalo lokal kita pake localhost:8080
         const wsUrl = API_URL.includes('localhost')
             ? `ws://localhost:8080/chat?order_id=${id}`
-            : `${wsProtocol}${wsBaseParams}/chat-ws?order_id=${id}`; // Sesuaikan dengan config nginx prod
+            : `${wsProtocol}${wsBaseParams}/chat-ws?order_id=${id}`;
 
         ws.current = new WebSocket(wsUrl);
 
