@@ -1,0 +1,1 @@
+export default function IncomeAnalytics() { return <div>Income Analytics Page</div>; }

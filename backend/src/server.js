@@ -15,6 +15,9 @@ import invoiceRoutes from './routes/invoiceRoutes.js';
 import withdrawRoutes from './routes/withdrawRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
+// === IDEAFAST ===
+import courseRoutes from './routes/idefast/courseRoutes.js';
+
 // === FIX: Paksa Node.js nyari .env di direktori root (luar folder src) ===
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,7 +56,8 @@ app.use(cors({
 }));
 
 // Biar bisa baca data JSON dari frontend
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // Turunin jadi 1 menit aja buat ngetes
@@ -89,20 +93,22 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/withdraw', withdrawRoutes);
 app.use('/api/admin', adminRoutes);
+// IDEAFAST
+app.use('/api/ideafast', courseRoutes);
 
 // Test Route
 app.get('/', (req, res) => {
     res.send('API MinJok is Running & Secured! 🚀🛡️');
 });
 
-const PORT = process.env.PORT || 5005;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, (err) => {
     if (err) {
         console.error(`❌ Gagal menjalankan server di port ${PORT}:`, err.message);
         console.error(`💡 Tips: Port ${PORT} mungkin sedang dipakai oleh aplikasi lain. Coba ganti port di .env atau matikan aplikasi tersebut.`);
         process.exit(1);
     }
-    console.log(`✅ Server nyala di http://localhost:${PORT}`);
-    // CCTV buat ngecek .env lu beneran kebaca atau nggak!
-    console.log(`🔑 Status Kunci Midtrans: ${process.env.MIDTRANS_SERVER_KEY ? 'KEBACA BRO! 🔥' : 'MASIH KOSONG ❌'}`);
+    console.log(`V Server nyala di http://localhost:${PORT}`);
+
+    console.log(`Status Kunci Midtrans: ${process.env.MIDTRANS_SERVER_KEY ? 'KEBACA BRO! 🔥' : 'MASIH KOSONG ❌'}`);
 });

@@ -38,7 +38,7 @@ import BuatPesanan from './pages/dashboard/BuatPesanan';
 import FAQUser from './pages/dashboard/FAQUser';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// admin
+// Admin Layout & Pages
 import AdminLayout from './layouts/AdminLayout';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminWithdrawals from './pages/admin/AdminWithdrawals';
@@ -46,6 +46,17 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminWorker from './pages/admin/AdminWorkers';
 import AdminOrders from './pages/admin/AdminOrders';
 import { ThemeProvider } from './context/ThemeContext';
+import EditMateri from './pages/admin/EditMateri';
+
+// === TAMBAHAN IMPORT MENU E-LEARNING (SESUAI MINDMAP) ===
+import CourseMaker from './pages/admin/CourseMaker';
+import ElearningOverview from './pages/admin/ElearningOverview';
+import ElearningDetail from './pages/admin/ElearningDetail';
+import ElearningReview from './pages/admin/ElearningReview';
+import CourseWorkspace from './pages/admin/CourseWorkspace';
+import DetailUsers from './pages/admin/DetailUsers';
+import IncomeAnalytics from './pages/admin/IncomeAnalytics';
+import PaymentHistory from './pages/admin/PaymentHistory';
 
 // Worker Dashboard Layout & Pages
 import WorkerLayout from './layouts/WorkerLayout';
@@ -58,6 +69,13 @@ import FAQ from './pages/carrier/FAQ';
 import ChatGlobalWorker from './pages/carrier/ChatGlobalWorker';
 import ChatGlobal from './pages/dashboard/ChatGlobal';
 
+// === IMPORT HALAMAN E-LEARNING PUBLIC ===
+import ElearningCatalog from './pages/elearning/ElearningCatalog';
+import ElearningNavbar from './components/ElearningNavbar';
+import CourseDetailPublic from './pages/elearning/CourseDetailPublic';
+import LearnCourse from './pages/elearning/LearningCourse';
+import QuizPlay from './pages/elearning/QuizPlay';
+import Certificate from './pages/elearning/Certificate';
 /* ============================================================
    KITA BIKIN KOMPONEN LAYOUT UTAMA DI SINI
 ============================================================ */
@@ -66,10 +84,20 @@ const MainLayout = () => {
     <>
       <Navbar />
       <main>
-        {/* <Outlet /> ini ibarat "lubang". Halaman LandingPage, WebDev, dll bakal dimasukin ke lubang ini */}
         <Outlet />
       </main>
       <Footer />
+    </>
+  );
+};
+
+const ElearningLayout = () => {
+  return (
+    <>
+      <ElearningNavbar />
+      <main>
+        <Outlet />
+      </main>
     </>
   );
 };
@@ -99,9 +127,31 @@ function App() {
           <Route path="/legal/garansi-revisi" element={<GaransiRevisi />} />
         </Route>
 
-        {/* === RUTE GRUP DASHBOARD (DILINDUNGI PROTECTED ROUTE) === */}
-        {/* Semua halaman di dalam sini nggak bisa diakses kalau belum login */}
+        {/* === RUTE E-LEARNING PUBLIC & KUIS === */}
+        {/* 1. Katalog Elearning (Pake Navbar Khusus) */}
+        <Route element={<ElearningLayout />}>
+          <Route path="/elearning" element={<ElearningCatalog />} />
+        </Route>
+
+        {/* 2. Detail Course & Kuis (Polosan, tapi dibungkus ThemeProvider) */}
+        <Route path="/elearning/course/:id" element={
+          <ThemeProvider><CourseDetailPublic /></ThemeProvider>
+        } />
+        <Route path="/elearning/quiz-play" element={
+          <ThemeProvider><QuizPlay /></ThemeProvider>
+        } />
+        <Route path="/elearning/certificate/:id" element={<ThemeProvider><Certificate /></ThemeProvider>} />
+
+
+        {/* === RUTE PROTECTED (WAJIB LOGIN) === */}
         <Route element={<ProtectedRoute />}>
+
+          {/* RUTE RUANG BELAJAR (WAJIB LOGIN, TAPI BUKAN BAGIAN DARI DASHBOARD LAYOUT) */}
+          <Route path="/elearning/learn/:id" element={
+            <ThemeProvider portal="user"><LearnCourse /></ThemeProvider>
+          } />
+
+          {/* RUTE DASHBOARD USER (PAKE SIDEBAR DASHBOARD) */}
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Overview />} />
             <Route path="buat-pesanan" element={<BuatPesanan />} />
@@ -116,20 +166,34 @@ function App() {
 
         {/* === RUTE GRUP ADMIN DASHBOARD === */}
         <Route path="/admin/login" element={<AdminLogin />} />
+
         {/* === RUTE GRUP 5: SUPER ADMIN DASHBOARD === */}
         <Route path="/admin/dashboard" element={
           <ThemeProvider portal="admin">
             <AdminLayout />
           </ThemeProvider>
         }>
+          {/* Default Route Admin */}
           <Route index element={<AdminOverview />} />
+
+          {/* MENU JOKIFAST */}
           <Route path="withdrawals" element={<AdminWithdrawals />} />
           <Route path="workers" element={<AdminWorker />} />
           <Route path="orders" element={<AdminOrders />} />
+
+          {/* MENU IDEFAST (E-LEARNING) */}
+          <Route path="course-maker" element={<CourseMaker />} />
+          <Route path="elearning-overview" element={<ElearningOverview />} />
+          <Route path="elearning-detail" element={<ElearningDetail />} />
+          <Route path="elearning-review" element={<ElearningReview />} />
+          <Route path="users" element={<DetailUsers />} />
+          <Route path="income" element={<IncomeAnalytics />} />
+          <Route path="pembayaran" element={<PaymentHistory />} />
+          <Route path="edit-materi/:id" element={<EditMateri />} />
+          <Route path="course-workspace/:courseId" element={<CourseWorkspace />} />
         </Route>
 
         {/* === RUTE GRUP 2: HALAMAN POLOSAN (LOGIN & REGISTER) === */}
-        {/* Karena rute ini ada di luar MainLayout, Navbar & Footer otomatis musnah! */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

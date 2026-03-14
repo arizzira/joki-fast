@@ -47,9 +47,6 @@ export default function NegoRoom() {
 
     useEffect(() => { scrollToBottom(); }, [messages]);
 
-    // ==========================================
-    // 1A. FETCH ORDER (Cek Status Deal)
-    // ==========================================
     useEffect(() => {
         const fetchOrder = async () => {
             try {
@@ -74,9 +71,6 @@ export default function NegoRoom() {
         }
     };
 
-    // ==========================================
-    // 1B. FETCH HISTORY (Ini yg Tadi Kehapus Bang!)
-    // ==========================================
     useEffect(() => {
         const fetchHistory = async () => {
             try {
@@ -101,9 +95,6 @@ export default function NegoRoom() {
         }
     }, [id, currentUser]);
 
-    // ==========================================
-    // 2. WEBSOCKET (Jalur Kilat - Cuma Ada 1 Sekarang)
-    // ==========================================
     useEffect(() => {
         if (!currentUser) return;
 
@@ -161,7 +152,6 @@ export default function NegoRoom() {
         };
     }, [id, currentUser]);
 
-    // 3A. SEND TEXT MESSAGE
     const sendMessage = async (e) => {
         e?.preventDefault();
         if (inputMsg.trim() !== '' && isConnected && currentUser) {
@@ -169,13 +159,10 @@ export default function NegoRoom() {
             setInputMsg('');
         }
     };
-
-    // 3B. UPLOAD & SEND FILE MESSAGE
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Batasi ukuran 5MB
         if (file.size > 5 * 1024 * 1024) {
             alert('Ukuran file maksimal 5MB.');
             return;
@@ -185,18 +172,11 @@ export default function NegoRoom() {
         try {
             const formData = new FormData();
             formData.append('file', file);
-
-            // ========================================================
-            // ⚠️ PENTING: GANTI 2 BARIS INI PAKE PUNYA CLOUDINARY LU ⚠️
-            // ========================================================
             formData.append('upload_preset', 'jokifast_filenego');
             const cloudName = 'dncj5irc9';
-            // ========================================================
-
             const res = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, formData);
             const fileUrl = res.data.secure_url;
 
-            // Kasih penanda "FILE:" biar UI frontend tau kalau ini link file
             await sendPayloadToServer(`FILE:${fileUrl}`);
 
         } catch (error) {
@@ -204,15 +184,13 @@ export default function NegoRoom() {
             alert("Gagal mengupload file ke server.");
         } finally {
             setIsUploadingFile(false);
-            if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    // 3C. CORE SEND FUNCTION
     const sendPayloadToServer = async (textPayload) => {
         const roleInRoom = isWorkerMode ? 'WORKER' : 'USER';
         const isFile = textPayload.startsWith('FILE:');
-
         const messagePayload = {
             order_id: id,
             sender_id: currentUser.id,
@@ -237,7 +215,6 @@ export default function NegoRoom() {
         }
     };
 
-    // 4. SUBMIT DEAL (Worker Only)
     const handleSubmitDeal = async () => {
         if (!dpAmount || !hargaDeal) return;
         setSubmittingDeal(true);
@@ -250,7 +227,6 @@ export default function NegoRoom() {
                 dp_amount: parseInt(cleanDp)
             };
 
-            // ⚠️ FIX: Endpoint Deal harus sesuai dengan backend /orders/:id/submit-deal
             const res = await axiosInstance.post(`/orders/${id}/submit-deal`, payload);
 
             if (res.data.success) {
@@ -269,12 +245,10 @@ export default function NegoRoom() {
         }
     };
 
-    // 5. VALIDATE DEAL (Worker Only)
     const handleValidateDeal = async () => {
         setValidating(true);
         setValidationResult(null);
         try {
-            // ⚠️ FIX: Endpoint Validasi Deal harus sesuai backend /orders/:id/validate-deal
             const res = await axiosInstance.post(`/orders/${id}/validate-deal`);
             const result = res.data;
             if (result.success) {
@@ -290,11 +264,9 @@ export default function NegoRoom() {
         }
     };
 
-    // 6. CANCEL DEAL
     const handleCancelDeal = async () => {
         if (!confirm('Yakin batalkan negosiasi ini? Order akan kembali ke bursa.')) return;
         try {
-            // ⚠️ FIX: Endpoint Batal Deal harus sesuai backend /orders/:id/cancel-deal
             await axiosInstance.put(`/orders/${id}/cancel-deal`);
             navigate(isWorkerMode ? '/carrier/dashboard' : '/dashboard/pesanan');
         } catch (error) {
@@ -303,7 +275,6 @@ export default function NegoRoom() {
         }
     };
 
-    // Component Helper: Render Chat Bubble
     const renderMessageBubble = (msg) => {
         if (msg.isFile) {
             const isImage = msg.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i);
@@ -323,7 +294,6 @@ export default function NegoRoom() {
         return <p>{msg.text}</p>;
     };
 
-    // Theme variables
     const headerBg = isDark ? 'bg-slate-900/80 backdrop-blur-xl border-slate-800/60' : 'bg-white border-gray-200 shadow-sm';
     const chatAreaBg = isDark ? 'bg-slate-900/60 backdrop-blur-xl border-slate-800/60' : 'bg-white border-gray-200';
     const inputAreaBg = isDark ? 'bg-slate-950/50 border-slate-800/60' : 'bg-gray-50 border-gray-200';
@@ -379,8 +349,6 @@ export default function NegoRoom() {
                     <ShieldAlert className="w-4 h-4" /> Jangan kirim data pribadi!
                 </div>
             </div>
-
-            {/* Chat Area */}
             <div className={`flex-1 border rounded-2xl overflow-hidden flex flex-col shadow-xl ${chatAreaBg}`}>
                 <div className={`flex-1 p-4 overflow-y-auto space-y-4 scrollbar-hide ${isDark ? '' : 'bg-gray-50/50'}`}>
                     <AnimatePresence>
@@ -411,8 +379,6 @@ export default function NegoRoom() {
                 {/* Input */}
                 <div className={`p-4 border-t ${inputAreaBg}`}>
                     <form onSubmit={sendMessage} className="flex items-center gap-3">
-
-                        {/* Tombol Attach File */}
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -445,10 +411,7 @@ export default function NegoRoom() {
                     </form>
                 </div>
             </div>
-
-            {/* === RENDER BERDASARKAN MODE (WORKER ATAU KLIEN) === */}
             {isWorkerMode ? (
-                // PANEL KHUSUS WORKER (Tombol Ajukan Deal, Validasi AI, dll)
                 <div className={`border p-5 rounded-2xl shadow-xl space-y-4 ${headerBg}`}>
                     {validationResult && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}

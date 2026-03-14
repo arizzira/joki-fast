@@ -84,6 +84,7 @@ export default function Navbar() {
                         <Link to="/harga" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors duration-200">Harga</Link>
                         <Link to="/cara-order" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors duration-200">Cara Order</Link>
                         <Link to="/tentang-kami" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors duration-200">Tentang Kami</Link>
+                        <Link to="/elearning" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-200">E-Learning</Link>
                     </div>
 
                     {/* CTA Button Desktop */}
@@ -135,6 +136,9 @@ export default function Navbar() {
                             </Link>
                             <Link to="/tentang-kami" onClick={() => setIsOpen(false)} className="block px-4 py-3 text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-xl transition-all">
                                 Tentang Kami
+                            </Link>
+                            <Link to="/elearning" onClick={() => setIsOpen(false)} className="block px-4 py-3 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition-all">
+                                E-Learning
                             </Link>
 
                             <div className="pt-6 mt-4 border-t border-slate-100 flex flex-col gap-3">

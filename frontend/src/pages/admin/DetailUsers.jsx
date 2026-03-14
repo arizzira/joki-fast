@@ -1,0 +1,1 @@
+export default function DetailUsers() { return <div>Detail Users Page</div>; }

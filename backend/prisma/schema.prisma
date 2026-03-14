@@ -8,6 +8,9 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==========================================
+// ENUMS JOKIFAST (MARKETPLACE)
+// ==========================================
 enum Role {
   ADMIN
   WORKER
@@ -29,7 +32,6 @@ enum OrderStatus {
   CANCELLED
 }
 
-// Enum Baru buat Status Penarikan Dana
 enum WithdrawStatus {
   PENDING
   PROCESSING
@@ -37,13 +39,31 @@ enum WithdrawStatus {
   REJECTED
 }
 
-// Enum Baru buat Status Vetting Worker (Opsional, tapi bagus buat validasi)
 enum WorkerStatus {
   PENDING
   APPROVED
   REJECTED
 }
 
+// ==========================================
+// ENUMS IDEFAST (E-LEARNING)
+// ==========================================
+enum CourseType {
+  FREE_ALL         // 100% Gratis
+  PREMIUM          // Bayar di awal buat akses semua
+  FREEMIUM_CLASS   // Sebagian kelas gratis, sisanya bayar
+  PAID_CERTIFICATE // Materi gratis, cetak sertifikat bayar
+}
+
+enum CoursePaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ==========================================
+// MODEL UTAMA: USER (GABUNGAN JOKI & E-LEARNING)
+// ==========================================
 model User {
   id               String    @id @default(uuid())
   nama             String
@@ -63,30 +83,42 @@ model User {
   resetToken       String?
   resetTokenExpiry DateTime?
   
-  // TAMBAHAN BARU: Saldo & Relasi Withdraw
+  // Saldo & Relasi Withdraw
   saldo            Int       @default(0) // Saldo dalam Rupiah
   withdrawals      Withdrawal[]
 
-  // ==========================================
-  // TAMBAHAN BARU: Vetting Worker
-  // ==========================================
+  // Vetting Worker
   keahlian         String?   // Contoh: "Web Development", "UI/UX"
   portfolio_link   String?   // Link GDrive, LinkedIn, dll.
-  status_worker    WorkerStatus @default(APPROVED) // Nanti lu ubah PENDING kalau sistem review admin udah siap
+  status_worker    WorkerStatus @default(APPROVED) 
   
-  // Relasi: 1 User bisa jadi Klien (bikin banyak order) atau Worker (ngerjain banyak order)
+  // =======================================
+  // RELASI JOKIFAST
+  // =======================================
   ordersAsClient   Order[]   @relation("ClientOrders")
   ordersAsWorker   Order[]   @relation("WorkerOrders")
   notifications    Notification[]
+
+  // =======================================
+  // RELASI IDEFAST (E-LEARNING)
+  // =======================================
+  enrollments        Enrollment[]
+  courseTransactions CourseTransaction[]
+  notes              UserNote[]    
+  highlights         Highlight[]   
+  courseReviews      CourseReview[]
+  certificates       Certificate[]
   
   createdAt        DateTime  @default(now())
 }
 
+// ==========================================
+// MODEL JOKIFAST (MARKETPLACE)
+// ==========================================
 model Order {
   id                String        @id @default(uuid())
   order_id_custom   String        @unique
   
-  // Relasi ke User (Klien yang pesan)
   client_id         String        
   client            User          @relation("ClientOrders", fields: [client_id], references: [id])
   
@@ -99,28 +131,25 @@ model Order {
   status_pembayaran PaymentStatus @default(BELUM_DP)
   status_pengerjaan OrderStatus   @default(WAITING_WORKER)
   
-  rating             Int?
-  ulasan             String?  @db.Text
+  rating            Int?
+  ulasan            String?  @db.Text
 
-  // Deal Negosiasi
   harga_deal        Int?
   dp_amount         Int?
   deal_submitted    Boolean       @default(false)
   deal_validated    Boolean       @default(false)
   
-  // Tracking
   revision_count    Int           @default(0)
-  file_hasil        String?           // Legacy, kept for backwards compat
-  progress_note     String?           // Worker update progress
-  catatan_revisi    String?           // Last revision note from user
+  file_hasil        String?           
+  progress_note     String?           
+  catatan_revisi    String?           
   
-  // Relasi ke User (Worker yang ngerjain)
   worker_id         String?
   worker            User?         @relation("WorkerOrders", fields: [worker_id], references: [id])
   
-  invoices          Invoice[]
-  results           OrderResult[]
-  createdAt         DateTime      @default(now())
+  invoices         Invoice[]
+  results          OrderResult[]
+  createdAt        DateTime      @default(now())
 }
 
 model OrderResult {
@@ -128,21 +157,21 @@ model OrderResult {
   order_id    String
   order       Order    @relation(fields: [order_id], references: [id])
   tipe        String   // "FILE", "LINK", "PHOTO"
-  url         String   // Cloudinary URL or external link
-  caption     String?  // Deskripsi file/link
-  nama_file   String?  // Nama asli (for files)
+  url         String   
+  caption     String?  
+  nama_file   String?  
   createdAt   DateTime @default(now())
 }
 
 model Invoice {
-  id                String   @id @default(uuid())
-  order_id          String
-  order             Order    @relation(fields: [order_id], references: [id])
-  jumlah            Int
-  tipe              String   // Isinya: "DP" atau "PELUNASAN"
-  status            String   @default("PENDING") // PENDING, VERIFIED
-  link_bukti_bayar  String?
-  createdAt         DateTime @default(now())
+  id               String   @id @default(uuid())
+  order_id         String
+  order            Order    @relation(fields: [order_id], references: [id])
+  jumlah           Int
+  tipe             String   // "DP" atau "PELUNASAN"
+  status           String   @default("PENDING") // PENDING, VERIFIED
+  link_bukti_bayar String?
+  createdAt        DateTime @default(now())
 }
 
 model Notification {
@@ -165,22 +194,201 @@ model ChatMessage {
   createdAt DateTime @default(now())
 }
 
-// BIKIN MODEL BARU KHUSUS WITHDRAWAL (PENARIKAN DANA)
 model Withdrawal {
   id              String         @id @default(uuid())
-  
   workerId        String
   worker          User           @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  
-  amount          Int            // Jumlah uang yang ditarik
-  whatsapp        String?        // Nomor WhatsApp
-
+  amount          Int            
+  whatsapp        String?        
   bank            String         
   no_rekening     String         
-  
   status          WithdrawStatus @default(PENDING)
-  catatan_admin   String?        // Alasan kalau admin nolak penarikan
-  
+  catatan_admin   String?        
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+}
+
+// ==========================================
+// MODEL IDEFAST (E-LEARNING SYSTEM) 4-LEVEL HIERARCHY
+// ==========================================
+
+model CourseTransaction { 
+  id            String               @id @default(uuid())
+  orderId       String               @unique 
+  userId        String
+  courseId      String
+  amount        Int
+  status        CoursePaymentStatus  @default(PENDING)
+  paymentUrl    String?              
+  
+  user          User                 @relation(fields: [userId], references: [id])
+  course        Course               @relation(fields: [courseId], references: [id])
+  
+  createdAt     DateTime             @default(now())
+}
+
+// [LEVEL 1] TEMA BESAR / PATH
+model Course { 
+  id              String              @id @default(uuid())
+  title           String
+  description     String              @db.Text
+  bannerUrl       String?
+  type            CourseType          @default(FREE_ALL)
+  price           Int                 @default(0) 
+  originalPrice   Int?                // Harga coret
+  category        String              @default("Semua")
+  level           String              @default("Semua Level")
+  promoVideoUrl   String?
+  fullDescription String?             @db.Text
+  benefits        String[]            // List of strings for JSON arrays in Postgres
+  estimatedHours  Int                 @default(0)
+  isPublished     Boolean             @default(false)
+  
+  classes         Class[]             // Turun ke Level 2
+  quizzes       Quiz[]              // Ujian Akhir Path
+  enrollments   Enrollment[]
+  transactions  CourseTransaction[]
+  reviews       CourseReview[]
+  certificates  Certificate[]       // Sertifikat Path (opsional)
+
+  createdAt     DateTime            @default(now())
+}
+
+// [LEVEL 2] KELAS BESAR 
+model Class { 
+  id            String        @id @default(uuid())
+  courseId      String
+  title         String
+  description   String        @db.Text
+  orderIndex    Int       
+  isPremium     Boolean       @default(false) 
+
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  branchClasses BranchClass[] // Turun ke Level 3
+  quizzes       Quiz[]        // Quiz Akhir Kelas (opsional)
+  certificates  Certificate[] // Sertifikat Lulus Kelas (opsional)
+
+  createdAt     DateTime      @default(now())
+}
+
+// [LEVEL 3] CABANG KELAS / TOPIK
+model BranchClass {
+  id            String        @id @default(uuid())
+  classId       String
+  title         String
+  orderIndex    Int
+  
+  class         Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  smallBranches SmallBranch[] // Turun ke Level 4
+  quizzes       Quiz[]        // Quiz per Cabang
+  certificates  Certificate[] // Sertifikat Cabang (opsional)
+
+  createdAt     DateTime      @default(now())
+}
+
+// [LEVEL 4] POTONGAN BRANCH / MATERI (Murni Teks/Konten, NO QUIZ)
+model SmallBranch { 
+  id            String        @id @default(uuid())
+  branchClassId String
+  title         String
+  content       String        @db.Text 
+  orderIndex    Int
+  
+  branchClass   BranchClass   @relation(fields: [branchClassId], references: [id], onDelete: Cascade)
+  notes         UserNote[]
+  highlights    Highlight[]
+
+  createdAt     DateTime      @default(now())
+}
+
+// EVALUASI (Bisa nempel di Level 1, 2, atau Level 3)
+model Quiz { 
+  id            String        @id @default(uuid())
+  courseId       String?       // Untuk Ujian Akhir Path (Level 1)
+  classId       String?       // Isi ini kalau jadi "Quiz Akhir Kelas" (Level 2)
+  branchClassId String?       // Isi ini kalau jadi "Quiz per Branch" (Level 3 - legacy)
+  
+  question      String        @db.Text
+  imageUrl      String?  
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String  
+  
+  course        Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  class         Class?        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  branchClass   BranchClass?  @relation(fields: [branchClassId], references: [id], onDelete: Cascade)
+}
+
+// CATATAN ABADI FLOATING BUBBLE (Nempel di Level 4)
+model UserNote { 
+  id            String        @id @default(uuid())
+  userId        String
+  smallBranchId String
+  content       String        @db.Text 
+  
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smallBranch   SmallBranch   @relation(fields: [smallBranchId], references: [id], onDelete: Cascade)
+
+  updatedAt     DateTime      @updatedAt
+}
+
+// STABILO WARNA (Nempel di Level 4)
+model Highlight { 
+  id            String        @id @default(uuid())
+  userId        String
+  smallBranchId String
+  selectedText  String        @db.Text
+  color         String        @default("yellow") 
+  domLocator    String        @db.Text 
+  
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  smallBranch   SmallBranch   @relation(fields: [smallBranchId], references: [id], onDelete: Cascade)
+}
+
+// TRACKING PROGRESS USER DI KELAS
+model Enrollment { 
+  id                   String   @id @default(uuid())
+  userId               String
+  courseId             String
+  hasPaid              Boolean  @default(false) 
+  progressSmallBranch  String[] // Array ID SmallBranch yg udah diselesaikan
+  isCompleted          Boolean  @default(false)
+  
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course               Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt            DateTime @default(now())
+}
+
+// REVIEW KELAS E-LEARNING
+model CourseReview { 
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  rating    Int      
+  comment   String   @db.Text
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// SERTIFIKAT LULUS (Fleksibel: Bisa per Course, Class, atau Branch)
+model Certificate { 
+  id             String       @id @default(uuid())
+  userId         String
+  courseId       String?      
+  classId        String?
+  branchClassId  String?
+  certificateUrl String   
+  
+  user           User         @relation(fields: [userId], references: [id])
+  course         Course?      @relation(fields: [courseId], references: [id])
+  class          Class?       @relation(fields: [classId], references: [id])
+  branchClass    BranchClass? @relation(fields: [branchClassId], references: [id])
+
+  issuedAt       DateTime     @default(now())
 }

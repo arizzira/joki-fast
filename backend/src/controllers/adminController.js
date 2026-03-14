@@ -2,15 +2,10 @@ import prisma from '../config/db.js';
 
 export const getDashboardStats = async (req, res) => {
     try {
-        // 1. Hitung total User & Worker
         const totalUsers = await prisma.user.count({ where: { role: 'USER' } });
         const totalWorkers = await prisma.user.count({ where: { role: 'WORKER' } });
-
-        // 2. Hitung total Transaksi
         const totalOrders = await prisma.order.count();
         const completedOrders = await prisma.order.count({ where: { status_pengerjaan: 'DONE' } });
-
-        // 3. Hitung Pemasukan Bersih Platform (20% dari order yang LUNAS)
         const lunasOrders = await prisma.order.findMany({
             where: { status_pembayaran: 'LUNAS' },
             select: { harga_deal: true, harga_total: true }
@@ -18,7 +13,7 @@ export const getDashboardStats = async (req, res) => {
 
         const totalRevenue = lunasOrders.reduce((sum, order) => {
             const harga = order.harga_deal || order.harga_total;
-            return sum + Math.floor(harga * 0.20); // Ambil jatah 20%
+            return sum + Math.floor(harga * 0.20);
         }, 0);
 
         res.status(200).json({
@@ -37,11 +32,6 @@ export const getDashboardStats = async (req, res) => {
     }
 };
 
-// ============================================================
-// API ADMIN: MANAJEMEN PENARIKAN DANA
-// ============================================================
-
-// 1. Ambil semua antrean penarikan dana
 export const getAllWithdrawals = async (req, res) => {
     try {
         const withdrawals = await prisma.withdrawal.findMany({
@@ -57,16 +47,12 @@ export const getAllWithdrawals = async (req, res) => {
     }
 };
 
-// 2. Update status penarikan (COMPLETED / REJECTED)
 export const updateWithdrawalStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, catatan_admin } = req.body; // status = 'PROCESSING', 'COMPLETED', atau 'REJECTED'
-
+        const { status, catatan_admin } = req.body;
         const withdrawal = await prisma.withdrawal.findUnique({ where: { id } });
         if (!withdrawal) return res.status(404).json({ success: false, message: "Data penarikan tidak ditemukan." });
-
-        // Kalau ditolak, uang harus dikembalikan (Refund) ke saldo Worker
         if (status === 'REJECTED' && withdrawal.status !== 'REJECTED') {
             await prisma.$transaction([
                 prisma.withdrawal.update({
@@ -75,11 +61,10 @@ export const updateWithdrawalStatus = async (req, res) => {
                 }),
                 prisma.user.update({
                     where: { id: withdrawal.workerId },
-                    data: { saldo: { increment: withdrawal.amount } } // Balikin duitnya
+                    data: { saldo: { increment: withdrawal.amount } }
                 })
             ]);
         } else {
-            // Kalau cuma update ke PROCESSING atau COMPLETED
             await prisma.withdrawal.update({
                 where: { id },
                 data: { status, catatan_admin: catatan_admin || null }

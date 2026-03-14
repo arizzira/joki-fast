@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Clock, CheckCircle2, Wallet, TrendingUp, Search, Filter, Loader2, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Clock, CheckCircle2, Wallet, TrendingUp, Loader2, ArrowRight, BookOpen, PlayCircle, X, Sparkles } from 'lucide-react';
 import axiosInstance from '../../api/axiosInstance';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 
 const fadeUp = {
@@ -12,8 +12,6 @@ const fadeUp = {
         transition: { delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }
     })
 };
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const formatRupiah = (angka) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
@@ -36,8 +34,13 @@ const formatStatusText = (status) => {
 
 export default function Overview() {
     const { isDark } = useTheme();
+    const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // State buat ngecek jejak E-learning
+    const [pendingCourseUrl, setPendingCourseUrl] = useState(localStorage.getItem('redirect_after_login'));
+    const [showBanner, setShowBanner] = useState(true);
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -52,6 +55,26 @@ export default function Overview() {
         };
         fetchOrders();
     }, []);
+
+    // Fungsi klik tombol E-Learning di Banner
+    const handleElearningClick = () => {
+        if (pendingCourseUrl) {
+            localStorage.removeItem('redirect_after_login'); // Hapus jejak
+            navigate(pendingCourseUrl); // Balikin ke kelas yang tertunda
+        } else {
+            navigate('/elearning'); // Lempar ke katalog umum
+        }
+    };
+
+    // Fungsi tutup banner buat user yang nggak mau diganggu
+    const handleCloseBanner = (e) => {
+        e.stopPropagation();
+        setShowBanner(false);
+        if (pendingCourseUrl) {
+            localStorage.removeItem('redirect_after_login');
+            setPendingCourseUrl(null);
+        }
+    };
 
     const activeOrdersCount = orders.filter(o => o.status_pengerjaan !== 'DONE').length;
     const completedOrdersCount = orders.filter(o => o.status_pengerjaan === 'DONE').length;
@@ -79,6 +102,7 @@ export default function Overview() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
                     <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${textPrimary}`}>Overview</h1>
@@ -88,6 +112,58 @@ export default function Overview() {
                     Buat Pesanan Baru <ArrowRight className="w-4 h-4" />
                 </Link>
             </div>
+
+            {/* ========================================== */}
+            {/* BANNER E-LEARNING GEDE BANGET (SMART BANNER) */}
+            {/* ========================================== */}
+            <AnimatePresence>
+                {showBanner && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95, height: 0, marginBottom: 0 }}
+                        className="relative rounded-2xl overflow-hidden shadow-2xl cursor-pointer group"
+                        onClick={handleElearningClick}
+                    >
+                        {/* Background animasinya */}
+                        <div className={`absolute inset-0 bg-gradient-to-r ${pendingCourseUrl ? 'from-indigo-600 via-purple-600 to-indigo-800' : 'from-blue-600 to-indigo-700'}`}>
+                            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2070&auto=format&fit=crop')] mix-blend-overlay opacity-20 bg-cover bg-center"></div>
+                        </div>
+
+                        {/* Konten Banner */}
+                        <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-6 w-full sm:w-auto">
+                                <div className="hidden sm:flex w-16 h-16 rounded-full bg-white/20 backdrop-blur-md items-center justify-center shrink-0 border border-white/30 shadow-inner">
+                                    <BookOpen className="w-8 h-8 text-white" />
+                                </div>
+                                <div className="text-white">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider mb-2 border border-white/20">
+                                        <Sparkles className="w-3 h-3" /> {pendingCourseUrl ? 'Pendaftaran Tertunda' : 'IDefast E-Learning'}
+                                    </span>
+                                    <h2 className="text-2xl sm:text-3xl font-extrabold mb-1">
+                                        {pendingCourseUrl ? 'Lanjutkan Pendaftaran Kelas!' : 'Tingkatkan Skillmu Sekarang'}
+                                    </h2>
+                                    <p className="text-white/80 text-sm max-w-lg">
+                                        {pendingCourseUrl
+                                            ? 'Kamu selangkah lagi untuk memulai materi. Klik di sini untuk menyelesaikan pembelian atau pendaftaran kelasmu.'
+                                            : 'Jelajahi berbagai materi kelas premium dan gratis dari IDefast. Dapatkan sertifikat dan tingkatkan karirmu!'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button className="w-full sm:w-auto px-6 py-3.5 bg-white text-indigo-700 hover:bg-indigo-50 font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 shrink-0 group-hover:shadow-white/20">
+                                <PlayCircle className="w-5 h-5" />
+                                {pendingCourseUrl ? 'Buka Kelas Sekarang' : 'Lihat Katalog'}
+                            </button>
+
+                            {/* Tombol Tutup (X) */}
+                            <button onClick={handleCloseBanner} className="absolute top-4 right-4 p-1.5 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {stats.map((stat, i) => (

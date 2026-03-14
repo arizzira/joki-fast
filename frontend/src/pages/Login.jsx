@@ -68,7 +68,18 @@ export default function Login() {
                     localStorage.setItem('jokifast_token', response.data.token);
                     localStorage.setItem('jokifast_user', JSON.stringify(response.data.user));
 
-                    navigate('/dashboard');
+                    // ==========================================
+                    // SMART REDIRECT LOGIC E-LEARNING (BARU)
+                    // ==========================================
+                    const redirectUrl = localStorage.getItem('redirect_after_login');
+
+                    if (redirectUrl) {
+                        localStorage.removeItem('redirect_after_login'); // Hapus jejaknya biar rapi
+                        navigate(redirectUrl); // Lempar balik ke kelas!
+                    } else {
+                        navigate('/dashboard'); // Kalau ga ada jejak, lempar ke dashboard biasa
+                    }
+
                 } catch (err) {
                     setError('Gagal sinkronisasi data Google ke sistem JokiFast.');
                 } finally {
