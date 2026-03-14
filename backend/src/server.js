@@ -101,7 +101,7 @@ app.get('/', (req, res) => {
     res.send('API MinJok is Running & Secured! 🚀🛡️');
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5005;
 app.listen(PORT, (err) => {
     if (err) {
         console.error(`❌ Gagal menjalankan server di port ${PORT}:`, err.message);
